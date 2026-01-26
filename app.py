@@ -84,6 +84,28 @@ if not GROQ_API_KEY:
 
 groq_client = Groq(api_key=GROQ_API_KEY)
 
+# Light blue theme – pick one shade you like
+light_blue = "#a3d8ff"      # very light
+# light_blue = "#81d4fa"    # a bit more vivid
+# light_blue = "#4fc3f7"    # stronger but still friendly
+
+st.markdown(
+    f"""
+    <style>
+        button[kind="primary"] {{
+            background-color: {light_blue} !important;
+            border-color: {light_blue} !important;
+            color: black !important;           /* or #111 for better contrast */
+        }}
+        button[kind="primary"]:hover {{
+            background-color: #90caf9 !important;   /* slightly darker on hover */
+            border-color: #90caf9 !important;
+        }}
+    </style>
+    """,
+    unsafe_allow_html=True
+)
+
 # Agent classes (keeping your existing logic)
 class GroqOSSAgent:
     def __init__(self, name: str, system_message: str, model_name: str = DEFAULT_GROQ_MODEL):
@@ -614,8 +636,8 @@ def main():
 
     # Sidebar for configuration
     with st.sidebar:
-        st.header("⚙️ Configuration")
-        st.info(f"**Model:** {DEFAULT_GROQ_MODEL}")
+        # st.header("⚙️ Configuration")
+        # st.info(f"**Model:** {DEFAULT_GROQ_MODEL}")
         
         st.markdown("---")
         st.header("📚 How to Use")
@@ -681,7 +703,7 @@ def main():
                 help="Password for login (if required)"
             )
         
-        submit_button = st.form_submit_button("🚀 Generate Test Suite", use_container_width=True)
+        submit_button = st.form_submit_button("🚀 Generate Test Suite", use_container_width=True, type="primary")
 
     # Process form submission
     if submit_button:
@@ -848,4 +870,5 @@ python combined_test_suite.py
     """, unsafe_allow_html=True)
 
 if __name__ == "__main__":
+
     main()
