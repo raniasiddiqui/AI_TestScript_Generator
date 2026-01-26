@@ -85,26 +85,52 @@ if not GROQ_API_KEY:
 groq_client = Groq(api_key=GROQ_API_KEY)
 
 # Light blue theme – pick one shade you like
-light_blue = "#a3d8ff"      # very light
-# light_blue = "#81d4fa"    # a bit more vivid
-# light_blue = "#4fc3f7"    # stronger but still friendly
+light_blue = "#a3d8ff"
+light_blue_hover = "#90caf9"
+light_blue_active = "#64b5f6"
 
-st.markdown(
-    f"""
+st.markdown(f"""
     <style>
+        /* Normal primary buttons */
         button[kind="primary"] {{
             background-color: {light_blue} !important;
             border-color: {light_blue} !important;
-            color: black !important;           /* or #111 for better contrast */
+            color: black !important;
         }}
         button[kind="primary"]:hover {{
-            background-color: #90caf9 !important;   /* slightly darker on hover */
-            border-color: #90caf9 !important;
+            background-color: {light_blue_hover} !important;
+            border-color: {light_blue_hover} !important;
+        }}
+
+        /* Form submit button fix */
+        button[data-testid="stFormSubmitButton"],
+        button[kind="secondary"][data-testid="stFormSubmitButton"],
+        div.stForm [kind="secondary"] button {{
+            background-color: {light_blue} !important;
+            border: 1px solid #81d4fa !important;
+            color: #0d47a1 !important;
+            font-weight: 500;
+            border-radius: 6px;
+        }}
+
+        button[data-testid="stFormSubmitButton"]:hover,
+        div.stForm [kind="secondary"] button:hover {{
+            background-color: {light_blue_hover} !important;
+            border-color: #64b5f6 !important;
+        }}
+
+        button[data-testid="stFormSubmitButton"]:active,
+        div.stForm [kind="secondary"] button:active {{
+            background-color: {light_blue_active} !important;
+        }}
+
+        /* Disabled state (optional improvement) */
+        button[data-testid="stFormSubmitButton"]:disabled {{
+            background-color: #e0e0e0 !important;
+            color: #888 !important;
         }}
     </style>
-    """,
-    unsafe_allow_html=True
-)
+""", unsafe_allow_html=True)
 
 # Agent classes (keeping your existing logic)
 class GroqOSSAgent:
@@ -872,4 +898,5 @@ python combined_test_suite.py
 if __name__ == "__main__":
 
     main()
+
 
