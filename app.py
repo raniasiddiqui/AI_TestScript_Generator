@@ -62,36 +62,39 @@ st.markdown("""
     /* ============================================= */
     /* Primary button - Generate Test Suite          */
     /* ============================================= */
-    button[kind="primary"],
-    button[data-testid="stFormSubmitButton"][kind="primary"],
-    div.stForm [kind="primary"] button {
-        background-color: #a3d8ff !important;
-        border: 1px solid #81d4fa !important;
-        color: #0d47a1 !important;
-        font-weight: 500 !important;
-        border-radius: 6px !important;
-        padding: 0.6rem 1.2rem !important;
-    }
+    /* ========================= */
+/* FORCE OVERRIDE PRIMARY BUTTON */
+/* ========================= */
 
-    button[kind="primary"]:hover,
-    button[data-testid="stFormSubmitButton"][kind="primary"]:hover,
-    div.stForm [kind="primary"] button:hover {
-        background-color: #90caf9 !important;
-        border-color: #64b5f6 !important;
-    }
+div[data-testid="stFormSubmitButton"] > button {
+    background-color: #a3d8ff !important;
+    border: 1px solid #81d4fa !important;
+    color: #0d47a1 !important;
+    font-weight: 600 !important;
+    border-radius: 8px !important;
+    padding: 0.7rem 1.4rem !important;
+}
 
-    button[kind="primary"]:active,
-    button[data-testid="stFormSubmitButton"][kind="primary"]:active,
-    div.stForm [kind="primary"] button:active {
-        background-color: #64b5f6 !important;
-    }
+/* Hover */
+div[data-testid="stFormSubmitButton"] > button:hover {
+    background-color: #90caf9 !important;
+    border-color: #64b5f6 !important;
+    color: #0d47a1 !important;
+}
 
-    button[kind="primary"]:disabled,
-    button[data-testid="stFormSubmitButton"][kind="primary"]:disabled {
-        background-color: #e0e0e0 !important;
-        color: #888 !important;
-        border-color: #ccc !important;
-    }
+/* Active / Clicked */
+div[data-testid="stFormSubmitButton"] > button:active {
+    background-color: #64b5f6 !important;
+    transform: scale(0.98);
+}
+
+/* Disabled */
+div[data-testid="stFormSubmitButton"] > button:disabled {
+    background-color: #e0e0e0 !important;
+    color: #888 !important;
+    border-color: #ccc !important;
+}
+
 
     /* ============================================= */
     /* All input fields → white background           */
@@ -941,6 +944,7 @@ python combined_test_suite.py
 if __name__ == "__main__":
 
     main()
+
 
 
 
