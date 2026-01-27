@@ -58,6 +58,97 @@ st.markdown("""
     .stProgress > div > div > div > div {
         background-color: #1f77b4;
     }
+
+    /* ============================================= */
+    /* Primary button - Generate Test Suite          */
+    /* ============================================= */
+    button[kind="primary"],
+    button[data-testid="stFormSubmitButton"][kind="primary"],
+    div.stForm [kind="primary"] button {
+        background-color: #a3d8ff !important;
+        border: 1px solid #81d4fa !important;
+        color: #0d47a1 !important;
+        font-weight: 500 !important;
+        border-radius: 6px !important;
+        padding: 0.6rem 1.2rem !important;
+    }
+
+    button[kind="primary"]:hover,
+    button[data-testid="stFormSubmitButton"][kind="primary"]:hover,
+    div.stForm [kind="primary"] button:hover {
+        background-color: #90caf9 !important;
+        border-color: #64b5f6 !important;
+    }
+
+    button[kind="primary"]:active,
+    button[data-testid="stFormSubmitButton"][kind="primary"]:active,
+    div.stForm [kind="primary"] button:active {
+        background-color: #64b5f6 !important;
+    }
+
+    button[kind="primary"]:disabled,
+    button[data-testid="stFormSubmitButton"][kind="primary"]:disabled {
+        background-color: #e0e0e0 !important;
+        color: #888 !important;
+        border-color: #ccc !important;
+    }
+
+    /* ============================================= */
+    /* All input fields → white background           */
+    /* ============================================= */
+    /* Text input */
+    .stTextInput > div > div > input,
+    /* Textarea */
+    .stTextArea > div > div > textarea,
+    /* Number input */
+    [data-testid="stNumberInput"] input,
+    /* Password input */
+    input[type="password"],
+    /* General inputs */
+    input[type="text"],
+    input[type="number"],
+    textarea {
+        background-color: #ffffff !important;
+        color: #000000 !important;
+        border: 1px solid #c0c0c0 !important;
+        border-radius: 6px !important;
+        padding: 0.5rem 0.75rem !important;
+    }
+
+    /* Focus / active state */
+    .stTextInput > div > div > input:focus,
+    .stTextArea > div > div > textarea:focus,
+    input[type="text"]:focus,
+    input[type="password"]:focus,
+    input[type="number"]:focus,
+    textarea:focus {
+        border-color: #a3d8ff !important;
+        box-shadow: 0 0 0 3px rgba(163, 216, 255, 0.4) !important;
+        outline: none !important;
+    }
+
+    /* Hover state */
+    .stTextInput > div > div > input:hover:not(:focus),
+    .stTextArea > div > div > textarea:hover:not(:focus) {
+        border-color: #b0d4ff !important;
+    }
+
+    /* Placeholder text */
+    ::placeholder {
+        color: #a0a0a0 !important;
+        opacity: 1 !important;
+    }
+
+    /* Labels */
+    label {
+        color: #333333 !important;
+        font-weight: 500 !important;
+    }
+
+    /* Streamlit markdown / help text contrast */
+    .stMarkdown p, .stMarkdown li {
+        color: #222222 !important;
+    }
     </style>
     """, unsafe_allow_html=True)
 
@@ -83,54 +174,6 @@ if not GROQ_API_KEY:
     st.stop()
 
 groq_client = Groq(api_key=GROQ_API_KEY)
-
-# Light blue theme – pick one shade you like
-light_blue = "#a3d8ff"
-light_blue_hover = "#90caf9"
-light_blue_active = "#64b5f6"
-
-st.markdown(f"""
-    <style>
-        /* Normal primary buttons */
-        button[kind="primary"] {{
-            background-color: {light_blue} !important;
-            border-color: {light_blue} !important;
-            color: black !important;
-        }}
-        button[kind="primary"]:hover {{
-            background-color: {light_blue_hover} !important;
-            border-color: {light_blue_hover} !important;
-        }}
-
-        /* Form submit button fix */
-        button[data-testid="stFormSubmitButton"],
-        button[kind="secondary"][data-testid="stFormSubmitButton"],
-        div.stForm [kind="secondary"] button {{
-            background-color: {light_blue} !important;
-            border: 1px solid #81d4fa !important;
-            color: #0d47a1 !important;
-            font-weight: 500;
-            border-radius: 6px;
-        }}
-
-        button[data-testid="stFormSubmitButton"]:hover,
-        div.stForm [kind="secondary"] button:hover {{
-            background-color: {light_blue_hover} !important;
-            border-color: #64b5f6 !important;
-        }}
-
-        button[data-testid="stFormSubmitButton"]:active,
-        div.stForm [kind="secondary"] button:active {{
-            background-color: {light_blue_active} !important;
-        }}
-
-        /* Disabled state (optional improvement) */
-        button[data-testid="stFormSubmitButton"]:disabled {{
-            background-color: #e0e0e0 !important;
-            color: #888 !important;
-        }}
-    </style>
-""", unsafe_allow_html=True)
 
 # Agent classes (keeping your existing logic)
 class GroqOSSAgent:
@@ -898,5 +941,6 @@ python combined_test_suite.py
 if __name__ == "__main__":
 
     main()
+
 
 
