@@ -697,7 +697,7 @@ Locator Recommendations and Context:
 
 # Main UI
 def main():
-    st.markdown('<p class="main-header">🤖 QA Automation Suite Generator</p>', unsafe_allow_html=True)
+    st.markdown('<p class="main-header">🤖 Automation Test Script Generation</p>', unsafe_allow_html=True)
     
     st.markdown("""
     <div class="info-box">
@@ -939,6 +939,7 @@ python combined_test_suite.py
 if __name__ == "__main__":
 
     main()
+
 
 
 
