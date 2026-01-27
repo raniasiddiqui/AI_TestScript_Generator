@@ -17,7 +17,7 @@ nest_asyncio.apply()
 
 # Page configuration
 st.set_page_config(
-    page_title="QA Automation Suite Generator",
+    page_title="Automation Test Script Generation",
     page_icon="🤖",
     layout="wide",
     initial_sidebar_state="expanded"
@@ -701,7 +701,7 @@ def main():
     
     st.markdown("""
     <div class="info-box">
-    <b>Welcome to the QA Automation Suite Generator!</b><br>
+    <b>Welcome to the Automation Test Script Generation!</b><br>
     This tool helps you automatically generate comprehensive test cases and Playwright automation scripts from natural language instructions.
     </div>
     """, unsafe_allow_html=True)
@@ -935,15 +935,11 @@ python combined_test_suite.py
 
     # Footer
     st.markdown("---")
-    st.markdown("""
-    <div style="text-align: center; color: #666; padding: 2rem 0;">
-        <p>🤖 Powered by Groq AI & Playwright | Built with Streamlit</p>
-    </div>
-    """, unsafe_allow_html=True)
-
+    
 if __name__ == "__main__":
 
     main()
+
 
 
 
