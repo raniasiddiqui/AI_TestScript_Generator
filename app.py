@@ -1,174 +1,220 @@
 import streamlit as st
-import asyncio
 import re
-from groq import Groq
-from playwright.async_api import async_playwright
-from urllib.parse import urlparse
-from collections import deque
-import json
 import os
 from datetime import datetime
+import pandas as pd
+from groq import Groq
+import asyncio
 import nest_asyncio
 import sys
+import json
+import time
+from openpyxl import load_workbook
+from openpyxl.styles import Alignment
+from openpyxl.utils import get_column_letter
+
 if sys.platform == "win32":
     asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
-
 nest_asyncio.apply()
 
-# Page configuration
+# Page config
 st.set_page_config(
-    page_title="Automation Test Script Generation",
-    page_icon="🤖",
+    page_title="Playwright Test Runner & Reporter",
+    page_icon="📊",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
-# Custom CSS for better styling
+# ────────────────────────────────────────────────
+#               Custom CSS (unchanged)
+# ────────────────────────────────────────────────
 st.markdown("""
     <style>
+    /* Main container */
+    .main {
+        background-color: #f8f9fa;
+    }
+    
+    /* Headers */
     .main-header {
-        font-size: 2.5rem;
-        font-weight: bold;
-        color: #1f77b4;
+        font-size: 2rem;
+        font-weight: 600;
+        color: #2c3e50;
         text-align: center;
-        margin-bottom: 2rem;
-    }
-    .step-header {
-        background: linear-gradient(90deg, #1f77b4 0%, #ff7f0e 100%);
-        color: white;
+        margin-bottom: 1.5rem;
         padding: 1rem;
-        border-radius: 0.5rem;
-        margin: 1rem 0;
-        font-weight: bold;
     }
-    .success-box {
-        background-color: #d4edda;
-        border: 1px solid #c3e6cb;
-        border-radius: 0.5rem;
-        padding: 1rem;
-        margin: 1rem 0;
+    
+    /* Sidebar styling */
+    [data-testid="stSidebar"] {
+        background-color: #f0f2f5;
+        padding: 2rem 1rem;
     }
+    
+    [data-testid="stSidebar"] h2 {
+        color: #2c3e50;
+        font-size: 1.2rem;
+        font-weight: 600;
+        margin-bottom: 1rem;
+    }
+    
+    [data-testid="stSidebar"] h3 {
+        color: #34495e;
+        font-size: 1rem;
+        font-weight: 600;
+        margin-top: 1.5rem;
+        margin-bottom: 0.5rem;
+    }
+    
+    [data-testid="stSidebar"] .element-container {
+        margin-bottom: 0.5rem;
+    }
+    
+    /* Info boxes */
     .info-box {
         background-color: #d1ecf1;
-        border: 1px solid #bee5eb;
+        border-left: 4px solid #0c5460;
         border-radius: 0.5rem;
-        padding: 1rem;
+        padding: 1.2rem;
+        margin: 1.5rem 0;
+    }
+    
+    .success-box {
+        background-color: #d4edda;
+        border-left: 4px solid #155724;
+        border-radius: 0.5rem;
+        padding: 1.2rem;
         margin: 1rem 0;
     }
-    .stProgress > div > div > div > div {
-        background-color: #1f77b4;
+    
+    .section-container {
+        background-color: white;
+        border: 1px solid #e0e0e0;
+        border-radius: 0.75rem;
+        padding: 2rem;
+        margin: 1.5rem 0;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
     }
-
-    /* ============================================= */
-    /* Primary button - Generate Test Suite          */
-    /* ============================================= */
-    /* ========================= */
-/* FORCE OVERRIDE PRIMARY BUTTON */
-/* ========================= */
-
-div[data-testid="stFormSubmitButton"] > button {
-    background-color: #a3d8ff !important;
-    border: 1px solid #81d4fa !important;
-    color: #0d47a1 !important;
-    font-weight: 600 !important;
-    border-radius: 8px !important;
-    padding: 0.7rem 1.4rem !important;
-}
-
-/* Hover */
-div[data-testid="stFormSubmitButton"] > button:hover {
-    background-color: #90caf9 !important;
-    border-color: #64b5f6 !important;
-    color: #0d47a1 !important;
-}
-
-/* Active / Clicked */
-div[data-testid="stFormSubmitButton"] > button:active {
-    background-color: #64b5f6 !important;
-    transform: scale(0.98);
-}
-
-/* Disabled */
-div[data-testid="stFormSubmitButton"] > button:disabled {
-    background-color: #e0e0e0 !important;
-    color: #888 !important;
-    border-color: #ccc !important;
-}
-
-
-    /* ============================================= */
-    /* All input fields → white background           */
-    /* ============================================= */
-    /* Text input */
+    
+    .section-header {
+        font-size: 1.5rem;
+        font-weight: 600;
+        color: #2c3e50;
+        margin-bottom: 1.5rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    
+    /* Form elements */
     .stTextInput > div > div > input,
-    /* Textarea */
-    .stTextArea > div > div > textarea,
-    /* Number input */
-    [data-testid="stNumberInput"] input,
-    /* Password input */
-    input[type="password"],
-    /* General inputs */
-    input[type="text"],
-    input[type="number"],
-    textarea {
+    .stTextArea > div > div > textarea {
         background-color: #ffffff !important;
-        color: #000000 !important;
-        border: 1px solid #c0c0c0 !important;
-        border-radius: 6px !important;
-        padding: 0.5rem 0.75rem !important;
+        color: #2c3e50 !important;
+        border: 1.5px solid #ced4da !important;
+        border-radius: 0.5rem !important;
+        padding: 0.75rem !important;
+        font-size: 0.95rem !important;
     }
-
-    /* Focus / active state */
+    
     .stTextInput > div > div > input:focus,
-    .stTextArea > div > div > textarea:focus,
-    input[type="text"]:focus,
-    input[type="password"]:focus,
-    input[type="number"]:focus,
-    textarea:focus {
-        border-color: #a3d8ff !important;
-        box-shadow: 0 0 0 3px rgba(163, 216, 255, 0.4) !important;
+    .stTextArea > div > div > textarea:focus {
+        border-color: #4a90e2 !important;
+        box-shadow: 0 0 0 0.2rem rgba(74, 144, 226, 0.25) !important;
         outline: none !important;
     }
-
-    /* Hover state */
-    .stTextInput > div > div > input:hover:not(:focus),
-    .stTextArea > div > div > textarea:hover:not(:focus) {
-        border-color: #b0d4ff !important;
+    
+    .stTextInput label,
+    .stTextArea label {
+        color: #34495e !important;
+        font-weight: 500 !important;
+        font-size: 0.95rem !important;
+        margin-bottom: 0.5rem !important;
     }
-
-    /* Placeholder text */
+    
     ::placeholder {
-        color: #a0a0a0 !important;
+        color: #95a5a6 !important;
         opacity: 1 !important;
     }
-
-    /* Labels */
-    label {
-        color: #333333 !important;
-        font-weight: 500 !important;
+    
+    /* Primary button */
+    div[data-testid="stFormSubmitButton"] > button {
+        background: linear-gradient(135deg, #4a90e2 0%, #357abd 100%) !important;
+        border: none !important;
+        color: white !important;
+        font-weight: 600 !important;
+        font-size: 1rem !important;
+        border-radius: 0.5rem !important;
+        padding: 0.75rem 2rem !important;
+        width: 100% !important;
+        transition: all 0.3s ease !important;
+        box-shadow: 0 4px 6px rgba(74, 144, 226, 0.3) !important;
     }
-
-    /* Streamlit markdown / help text contrast */
-    .stMarkdown p, .stMarkdown li {
-        color: #222222 !important;
+    
+    div[data-testid="stFormSubmitButton"] > button:hover {
+        background: linear-gradient(135deg, #357abd 0%, #2868a8 100%) !important;
+        box-shadow: 0 6px 8px rgba(74, 144, 226, 0.4) !important;
+        transform: translateY(-2px);
+    }
+    
+    div[data-testid="stFormSubmitButton"] > button:active {
+        transform: translateY(0);
+    }
+    
+    /* Download button */
+    .stDownloadButton > button {
+        background-color: #27ae60 !important;
+        border: none !important;
+        color: white !important;
+        font-weight: 600 !important;
+        border-radius: 0.5rem !important;
+        padding: 0.75rem 2rem !important;
+        width: 100% !important;
+        transition: all 0.3s ease !important;
+    }
+    
+    .stDownloadButton > button:hover {
+        background-color: #229954 !important;
+        box-shadow: 0 4px 6px rgba(39, 174, 96, 0.3) !important;
+    }
+    
+    /* Code block styling */
+    .stCodeBlock {
+        background-color: #f8f9fa !important;
+        border: 1px solid #e0e0e0 !important;
+        border-radius: 0.5rem !important;
+        margin: 1rem 0 !important;
+    }
+    
+    /* Help text */
+    .help-text {
+        font-size: 0.85rem;
+        color: #7f8c8d;
+        margin-top: 0.25rem;
+    }
+    
+    /* Divider */
+    hr {
+        margin: 2rem 0;
+        border: none;
+        border-top: 1px solid #e0e0e0;
+    }
+    
+    /* Progress bar */
+    .stProgress > div > div > div > div {
+        background-color: #4a90e2;
+    }
+    
+    /* Expander */
+    .streamlit-expanderHeader {
+        background-color: #f8f9fa;
+        border-radius: 0.5rem;
+        font-weight: 500;
     }
     </style>
-    """, unsafe_allow_html=True)
+""", unsafe_allow_html=True)
 
-# Load configuration
-# @st.cache_resource
-# def load_config():
-#     try:
-#         with open("config.json", "r") as f:
-#             return json.load(f)
-#     except FileNotFoundError:
-#         st.error("❌ config.json not found. Please create it with your API keys.")
-#         st.stop()
-
-# CONFIG = load_config()
-# GROQ_API_KEY = CONFIG.get("groq_api_key", "")
-# DEFAULT_GROQ_MODEL = CONFIG.get("groq_default_model", "llama-3.3-70b-versatile")
-
+# Groq setup
 GROQ_API_KEY = st.secrets["groq_api_key"]
 DEFAULT_GROQ_MODEL = st.secrets["groq_default_model"]
 
@@ -178,770 +224,636 @@ if not GROQ_API_KEY:
 
 groq_client = Groq(api_key=GROQ_API_KEY)
 
-# Agent classes (keeping your existing logic)
-class GroqOSSAgent:
-    def __init__(self, name: str, system_message: str, model_name: str = DEFAULT_GROQ_MODEL):
-        self.name = name
-        self.system_message = system_message
+class GroqAgent:
+    def __init__(self, system_prompt, model_name=DEFAULT_GROQ_MODEL):
+        self.system_prompt = system_prompt
         self.model_name = model_name
 
-    async def generate_response(self, message: str) -> str:
+    async def generate(self, user_content: str) -> str:
         try:
-            def run_completion():
-                completion = groq_client.chat.completions.create(
-                    model=self.model_name,
-                    messages=[
-                        {"role": "system", "content": self.system_message},
-                        {"role": "user", "content": message}
-                    ]
-                )
-                return completion.choices[0].message.content
-
-            loop = asyncio.get_event_loop()
-            return await loop.run_in_executor(None, run_completion)
+            completion = groq_client.chat.completions.create(
+                model=self.model_name,
+                messages=[
+                    {"role": "system", "content": self.system_prompt},
+                    {"role": "user", "content": user_content}
+                ],
+                temperature=0.2,
+                max_tokens=8000
+            )
+            return completion.choices[0].message.content.strip()
         except Exception as e:
-            return f"Error generating Groq OSS response: {str(e)}"
+            return f"Error: {str(e)}"
 
-async def refine_instruction(instruction: str) -> str:
-    refiner = GroqOSSAgent(
-        name="InstructionRefiner",
-        system_message="""
-        You are an expert in writing clear, precise, and unambiguous instructions for QA automation tasks.
-        Your task is to refine the provided instruction and make it understandable by an LLM easily, to ensure it is:
-        - Clear and concise, actionable language, avoiding ambiguity.
-        - Unambiguous with no vague terms
-        - Structured for easy interpretation by automation agents
-        - Focused on specifying exact actions, selectors, and validations
-        - Compliant with Playwright sync API requirements
-        - Includes self-healing locator guidelines
-        - Avoids placeholders or vague instructions
-        - Follow Playwright sync API conventions
-        - Include possible self-healing locator strategies. These include ID, name, class name, tag name, CSS selector, XPath, and role-based selectors, and text-based selectors. They should be prioritized based on reliability and stability.
-        - Focus on:
-          - Setup steps (navigate, prepare data)
-          - Action steps (click, fill, submit)
-          - Verification steps (assertions, checks)
-          - Error handling considerations        
-        - Requests per-step pass/fail logging and assertions
-        Output only the refined instruction as plain text, no markdown or explanations. Dont output any testcases in this step.
-        """,
-        model_name=DEFAULT_GROQ_MODEL
-    )
-    return await refiner.generate_response(instruction)
+# ────────────────────────────────────────────────
+#          ORIGINAL SCRIPT GENERATION PROMPT (unchanged)
+# ────────────────────────────────────────────────
+TRANSFORM_PROMPT = """\
+You are an expert Playwright automation engineer.
 
-class SiteInspectorAgent(GroqOSSAgent):
-    def __init__(self):
-        system_message = """
-        You are a site inspector that analyzes crawled web pages to extract reliable Playwright locators and discover QA-relevant insights for comprehensive test case generation.
-        You receive snippets from multiple crawled pages of the site and the user's instruction describing specific functionalities.
-        Analyze the crawled page snippets and user instruction to:
-        - Summarize the site structure, key pages, navigation flows, and discovered features (e.g., forms, buttons, interactive elements, user journeys).
-        - Identify possible test scenarios based on the site's elements and the user's instruction, including core functionalities, alternative flows, edge cases, and error conditions.
-        - Extract and recommend reliable Playwright locators (ID, name, class name, tag name, CSS selector, XPath, role-based, text-based) for key elements mentioned in the instruction or discovered during crawling.
-        - Suggest self-healing locator strategies and waits for dynamic content, prioritizing reliability and stability.
-        - Provide insights to generate a wider range of test cases, such as alternative paths, error-prone areas, and integration points.
-        Output a string starting with 'Site Insights and Recommended Locators: ' followed by a structured summary:
-        - Site Structure: Summarize key pages, navigation patterns, and features.
-        - Discovered Test Scenarios: List potential test cases (e.g., functional, negative, edge cases) based on crawled data and instruction.
-        - Recommended Locators: List reliable locators for key elements, prioritized by stability (e.g., ID > role-based > text-based > CSS/XPath).
-        If no URL was crawled, generate generic but reliable locators and insights based on common web patterns and the user's instruction.
-        Ensure locators are:
-        - Reliable and stable
-        - Adaptable to dynamic content
-        - Use self-healing strategies where possible
-        - Include ID, name, class name, tag name, CSS selector, XPath, and role-based selectors
-        - Use text-based selectors where applicable
-        - Prioritize selectors based on reliability and stability
-        """
-        super().__init__("SiteInspector", system_message, model_name=DEFAULT_GROQ_MODEL)
+CRITICAL RULES - READ CAREFULLY:
+1. Output ONLY executable Python code - nothing else
+2. NO test case documentation, NO scenario descriptions, NO markdown
+3. NO lines starting with: *, -, ##, Test Case, TC-, Feature, Scenario, Priority, etc.
+4. NO comments explaining test cases
+5. Start directly with imports
 
-    async def crawl_site(self, start_url: str, username: str, password: str, max_pages: int = 5) -> dict:
-        """Simple BFS crawler to fetch up to max_pages internal pages and their HTML snippets after logging in."""
-        from collections import deque
-        visited = set()
-        to_visit = deque([start_url])
-        page_contents = {}
-        base_origin = urlparse(start_url).scheme + "://" + urlparse(start_url).netloc
+You will receive a Python function generated by Playwright codegen.
 
-        async with async_playwright() as p:
-            browser = await p.chromium.launch(headless=True)
-            context = await browser.new_context(
-                user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-                viewport={"width": 1280, "height": 720}
-            )
-            page = await context.new_page()
-            try:
-                # Navigate to login page
-                st.write(f"Navigating to {start_url}...")
-                await page.goto(start_url, wait_until="domcontentloaded", timeout=60000)
+CRITICAL TRANSFORMATION RULES:
 
-                # Check if a "Sign In" button/link needs to be clicked
-                sign_in_button = await page.query_selector("a[href*='login'], button:has-text('Sign In'), button:has-text('Log In')")
-                if sign_in_button:
-                    st.write("Clicking 'Sign In' button...")
-                    await sign_in_button.click()
-                    await page.wait_for_load_state("domcontentloaded", timeout=30000)
-
-                # Selectors for email, password, and submit button. These can be expanded based on common patterns.
-                email_selectors = [
-                    "#userNameInput", "data-testid='email'", "input[type='email']", 
-                    "input[name='email']", "input[id='email']", "//input[contains(@placeholder, 'Email')]"
-                ]
-                password_selectors = [
-                    "#passwordInput", "data-testid='password'", "input[type='password']", 
-                    "input[name='password']", "input[id='password']", "//input[contains(@placeholder, 'Password')]"
-                ]
-                submit_selectors = [
-                    "#submitButton", ".submit", "[role='button']:has-text('Sign in')", 
-                    "data-testid='submit'", "button[type='submit']", 
-                    "button:has-text('Sign In')", "button:has-text('Log In')"
-                ]
-
-                email_locator = None
-                for selector in email_selectors:
-                    try:
-                        await page.wait_for_selector(selector, state="visible", timeout=10000)
-                        email_locator = selector
-                        break
-                    except:
-                        continue
-
-                if not email_locator:
-                    html = await page.content()
-                    st.error(f"Error: No email input found. Page HTML:\n{html[:1000]}...")
-                    raise Exception("No email input found with provided selectors")
-
-                st.write(f"Filling email with selector: {email_locator}")
-                await page.fill(email_locator, username)
-                await page.wait_for_timeout(1000) 
-
-                password_locator = None
-                for selector in password_selectors:
-                    try:
-                        await page.wait_for_selector(selector, state="visible", timeout=10000)
-                        password_locator = selector
-                        break
-                    except:
-                        continue
-
-                if not password_locator:
-                    raise Exception("No password input found with provided selectors")
-
-                st.write(f"Filling password with selector: {password_locator}")
-                await page.fill(password_locator, password)
-                await page.wait_for_timeout(1000)
-
-                submit_locator = None
-                for selector in submit_selectors:
-                    try:
-                        await page.wait_for_selector(selector, state="visible", timeout=10000)
-                        submit_locator = selector
-                        break
-                    except:
-                        continue
-
-                if not submit_locator:
-                    raise Exception("No submit button found with provided selectors")
-
-                st.write(f"Clicking submit with selector: {submit_locator}")
-                await page.click(submit_locator)
-
-                # Wait for post-login page
-                try:
-                    await page.wait_for_selector(".search-panel, #searchPanel, [role='search']", state="visible", timeout=30000)
-                    st.write(f"Logged in successfully at {start_url}")
-                except:
-                    error_selector = "text='Invalid credentials', text='Login failed', [role='alert']"
-                    error_element = await page.query_selector(error_selector)
-                    if error_element:
-                        error_text = await error_element.inner_text()
-                        st.error(f"Login failed with error: {error_text}")
-                        raise Exception(f"Login failed: {error_text}")
-                    await page.wait_for_timeout(5000)
-                    # current_url = page.url
-                    # if current_url == start_url:
-                    #     html = await page.content()
-                    #     st.error(f"Error: No redirect after login. Current URL: {current_url}\nPage HTML:\n{html[:1000]}...")
-                    #     raise Exception("No redirect after login attempt")
-                    # st.write(f"Redirected to {current_url} after login")
-
-                # Start crawling after login
-                while to_visit and len(page_contents) < max_pages:
-                    current = to_visit.popleft()
-                    if current in visited:
-                        continue
-                    visited.add(current)
-                    try:
-                        st.write(f"Crawling page: {current}")
-                        await page.goto(current, wait_until="domcontentloaded", timeout=60000)
-                        html = await page.content()
-                        page_contents[current] = html[:4000] # Snippet
-                        
-                        new_links = await page.evaluate('''
-                            (base_origin) => {
-                                return Array.from(document.querySelectorAll('a[href]'))
-                                    .map(a => {
-                                        let href = a.getAttribute('href');
-                                        if (href) {
-                                            try {
-                                                let fullUrl = new URL(href, window.location.href).href;
-                                                if (fullUrl.startsWith(base_origin)) {
-                                                    return fullUrl;
-                                                }
-                                            } catch (e) {}
-                                        }
-                                        return null;
-                                    })
-                                    .filter(Boolean);
-                            }
-                        ''', base_origin)
-
-                        for link in new_links:
-                            parsed = urlparse(link)
-                            if (link not in visited and
-                                link not in to_visit and
-                                not any(link.lower().endswith(ext) for ext in ('.pdf', '.jpg', '.png', '.gif', '.css', '.js', '.zip')) and
-                                parsed.path != '/' and parsed.path != ''):
-                                to_visit.append(link)
-                    except Exception as e:
-                        st.write(f"Error crawling {current}: {e}")
-                        continue
-            except Exception as e:
-                st.error(f"Error during login or crawling: {e}")
-                if not page_contents:
-                    try:
-                        html = await page.content()
-                        st.write(f"Page HTML on failure:\n{html[:1000]}...")
-                    except Exception as page_e:
-                        st.error(f"Could not even get page content on failure: {page_e}")
-            finally:
-                await context.close()
-                await browser.close()
-        return page_contents
-
-    async def inspect_site(self, url: str, key_elements: str, instruction: str, username: str, password: str) -> str:
-        if url:
-            if not username or not password:
-                st.warning("Username or password not provided in prompt. Crawling without login.")
-                # Implement a non-login crawl or return generic response
-                return await self.generate_response(
-                    f"No login credentials provided. Generate reliable Playwright locators and insights for {key_elements} based on common web patterns and the instruction: {instruction}"
-                )
-                
-            page_contents = await self.crawl_site(url, username, password, max_pages=5)
-            if not page_contents:
-                st.warning("No pages crawled successfully. Generating generic insights.")
-                return await self.generate_response(
-                    f"No URL content crawled. Generate reliable Playwright locators and insights for {key_elements} based on common web patterns and the instruction: {instruction}"
-                )
-            content_str = "\n\n---\n\n".join([f"Page: {k}\nHTML Snippet:\n{v}" for k, v in page_contents.items()])
-            crawl_summary = await self.generate_response(
-                f"Start URL: {url}\nKey Elements to Focus: {key_elements}\nUser Instruction: {instruction}\nCrawled Pages Snippets:\n{content_str}"
-            )
-            recommendations = await self.generate_response(
-                f"Analyze the crawl summary for site insights and locators: {crawl_summary}\nUser Key Elements: {key_elements}\nUser Instruction: {instruction}"
-            )
-            return recommendations
-        else:
-            st.warning("No URL provided. Generating generic insights.")
-            return await self.generate_response(
-                f"No URL provided. Generate reliable Playwright locators, self-healing strategies, and generic site insights (e.g., common flows for {key_elements}) based on common web patterns and the instruction: {instruction}"
-            )
-
-class PlannerAgentOSS(GroqOSSAgent):
-    def __init__(self):
-        system_message = """
-        You are an expert QA test planner with deep NLP understanding.
-        Your goal is to generate comprehensive test cases covering all possible variations, including but not limited to:
-
-        IMPORTANT: 
-        Firstly, your priority is to generate test cases for the core functionalities described in the instruction, including insights from crawled site data.
-        The core functionalities include covering complete flows for each feature mentioned in the instruction and discovered during site crawling.
-        The features are the basic flow, alternative flow, pre-conditions, post-conditions, validations/rules mentioned in the instruction, and additional scenarios from crawled data.
-        Then, expand to cover edge cases, error handling, and less common scenarios. First cpver the core functionalities in detail which mainly includes basic flow, alternate flow, pre-conditions, post-conditions, validations/rules mentioned in the instruction.
-        Then cover test cases discovered during site crawling as well. Then cover edge cases, error handling, and less common scenarios.
-        
-        After completing the core functionalities, generate test cases for the following types:
-        - Functional (positive scenarios where the system works as expected)
-        - Negative (invalid inputs, error handling, failures)
-        - Boundary (edge cases like min/max values, limits)
-        - Performance (load times, responsiveness under stress; simulate with Playwright where possible, e.g., multiple interactions, timeouts)
-        - Security (vulnerabilities like injection, authentication bypass; automate checks for common issues like XSS, CSRF if detectable via UI)
-        - Integration (interactions between components, APIs if accessible via UI)
-        - Usability (UI/UX checks like accessibility, responsiveness, user flows; use Playwright for visibility, focus, etc.)
-        - Regression (re-testing core functionalities to ensure no breaks)
-        - Smoke (basic functionality checks to verify build stability)
-        - Sanity (quick checks on specific changes or fixes)
-        - Database (if applicable, verify data persistence, queries via UI interactions)
-        - End-to-End (full user journeys from start to finish)
-        - Exploratory (suggest automated heuristics or random inputs for discovery; adapt to automation where feasible)
-
-        Analyze the provided instruction, refined details, and site insights/locator recommendations to generate test cases for as many of these types as applicable. If a type doesn't apply, skip it but aim to cover all possible variations where relevant.
-        Prioritize generating multiple test cases per type to cover variations (e.g., different inputs, scenarios).
-        For each test case, include:
-        - Test Case Name (Indicate type, e.g., Functional - Login Success)
-        - Description (Functionality being tested, including all possible variations)
-        - Preconditions (Setup required, e.g., browser state, data)
-        - Test Case Details (High-level overview)
-        - Step-by-step actions with clear selectors, actions, and validations (Use Playwright sync API, self-healing locators, waits, per-step logging/assertions)
-        - Expected Result (Clear pass/fail criteria)
-
-        Structure your response with sections for each test type (e.g., ## Functional Test Cases, ## Negative Test Cases, etc.).
-        Under each section, provide a numbered list of test cases.
-        Use precise language and avoid ambiguity.
-        Focus on:
-        - Setup steps (navigate, prepare data)
-        - Action steps (click, fill, submit)
-        - Verification steps (assertions, checks)
-        - Error handling considerations
-        - Use clear, actionable language
-        - Output only the test cases, no explanations or markdown beyond the required section headers and numbered lists
-        - Follow Playwright sync API conventions
-        - Use self-healing locator strategies (e.g., ID, name, class name, tag name, CSS selector, XPath, role-based selectors, text-based selectors)
-        - Prioritize selectors based on reliability and stability
-        - Include self-healing locator strategies (e.g., role-based, text-based over IDs if dynamic)
-        - Ensure each test case is executable with clear pass/fail criteria
-        - Include per-step pass/fail logging and assertions (e.g., console.log('Step 1: Passed') or expect().toBeVisible())
-        - Use the provided instruction, refined details, and locator recommendations/site insights as context for generating test cases
-        - For performance/security/usability, adapt to Playwright capabilities (e.g., measure page load time, check for alerts, verify ARIA attributes)
-        - For exploratory, generate test cases with randomized or varied inputs to simulate exploration
-        - Generate only the test cases, no explanations or markdown beyond the required section headers and numbered lists
-        - Use the provided instruction, refined details, and locator recommendations as context for generating test cases
-        - First generate testcases for core functionalities which mainly includes basic flow, alternate flow, pre-conditions, post-conditions, validations/rules mentioned in the instruction.
-        - Then expand to cover all other types of testcases as mentioned above.
-        - Generate ALL possible test cases given in the prompt.
-        """
-        super().__init__("PlannerOSS", system_message, model_name=DEFAULT_GROQ_MODEL)
-
-class TestCodeGenerator(GroqOSSAgent):
-    def __init__(self):
-        system_message = """
-        You are an expert in generating executable Python scripts for QA automation using Playwright sync API.
-        Given a test case description with name, description, preconditions, details, steps, expected result, and using the locator recommendations from the context.
-        Determine if it is possible to automate. If the test case requires manual intervention, special simulation like network throttling for performance, or interacting with the database, or something not easily done with Playwright UI automation, respond with 'Not Automatable'.
-        If automatable, generate a complete standalone Python script that:
-        - Imports from playwright.sync_api import sync_playwright, expect
-        - Uses with sync_playwright() as p:
-        - Launches browser = p.chromium.launch(headless=True)
-        - Creates context = browser.new_context()
-        - Creates page = context.new_page()
-        - Implements the preconditions and steps using the selectors from the context or recommended locators.
-        - Use either the provided selectors or self-healing locator strategies (ID, name, class name, tag name, CSS selector, XPath, role-based selectors, text-based selectors) prioritized by reliability and stability
-        - Uses page.goto, page.fill, page.click, page.wait_for_selector, etc.
-        - For validations, use expect(page.locator(selector)).to_be_visible(), to_have_text(), etc.
-        - If all assertions pass, print "Test Passed"
-        - If any fails, catch exception and print "Test Failed: [reason]"
-        - Include error handling with try-except.
-        - Use the username and password from the prompt. If any test case requires login, include the login steps using the provided credentials.
-        - Ensure the script is executable as a standalone file.
-        - Use the url from the prompt.
-        - Use self-healing locators as per guidelines.
-        - Ensure the python script follows Playwright sync API conventions and is free of syntax errors.
-        - For each step, include per-step pass/fail logging and assertions.
-        - Please make sure that if you add any comments or explainations or notes, they are in the form of python comments only.
-        Output only the Python script as plain text if automatable, or 'Not Automatable'.
-        - Very important: Only generate code of testcases that are possible to automate using Playwright sync API. If not possible, respond with 'Not Automatable' only.
-        """
-        super().__init__("TestCodeGenerator", system_message, model_name=DEFAULT_GROQ_MODEL)
-
-def clean_generated_code(code: str) -> str:
-    code = re.sub(r"```[a-zA-Z]*", "", code)
-    cleaned_lines = []
-    for line in code.splitlines():
-        if re.match(r"^\s*(#|from |import |with |def |class |try|except|page\.|browser|context|print|expect)", line):
-            cleaned_lines.append(line)
-        elif line.strip().startswith(("Test Case", "<think>", "###", "Alright")):
-            continue
-        elif line.strip() == "":
-            continue
-        else:
-            cleaned_lines.append(line)
-    return "\n".join(cleaned_lines).strip()
-
-async def run_automation_pipeline(user_prompt: str, site_url: str, username: str, password: str, status_container):
-    try:
-        # Extract keywords
-        element_keywords = []
-        for kw in ["search", "input", "button", "title", "heading", "section", "link", "locator", "element", "screenshot", 
-                   "scroll", "verify", "assert", "check", "capture", "wait", "load", "click", "fill", "submit", "navigate", 
-                   "page", "url", "text", "selector", "xpath", "css", "id", "name", "class", "tag", "role"]:
-            if kw in user_prompt.lower():
-                element_keywords.append(kw)
-        key_elements = ", ".join(element_keywords) if element_keywords else "main interactive elements"
-
-        # Step 1: Refine instruction
-        status_container.info("🔄 Step 1/4: Refining instruction...")
-        refined_instruction = await refine_instruction(user_prompt)
-        status_container.success("✅ Step 1/4: Instruction refined")
-        with st.expander("📝 View Refined Instruction"):
-            st.text(refined_instruction)
-
-        # Step 2: Inspect site
-        status_container.info("🔍 Step 2/4: Inspecting site and extracting locators...")
-        crawl_status = st.empty()
-        
-        def update_crawl_status(msg):
-            crawl_status.text(msg)
-        
-        inspector = SiteInspectorAgent()
-        locator_recommendations = await inspector.inspect_site(
-            site_url, key_elements, user_prompt, username, password, 
-            # status_callback=update_crawl_status
-        )
-        refined_instruction += f"\n{locator_recommendations}"
-        status_container.success("✅ Step 2/4: Site inspection complete")
-        with st.expander("🔍 View Site Insights"):
-            st.text(locator_recommendations)
+1. You MUST use ONLY the provided {{input_code}} function.
+2. You MUST NOT create any example test steps.
+3. You MUST NOT invent any navigation, URLs, clicks, or logic.
+4. You MUST NOT replace the body of the function.
+5. You MUST NOT generate a sample function.
+6. You MUST instrument the EXACT statements already present in the provided function.
+7. Every original Playwright statement must remain exactly as-is.
+8. You are ONLY allowed to wrap EACH existing statement in try/except for logging.
+9. Do NOT add new test steps.
+10. Do NOT modify locators.
+11. Do NOT modify URLs.
+12. Do NOT change expect statements.
+13. Do NOT remove commented lines.
+14. Do NOT rewrite the function logic.
+15. If the function is named test_example, it must remain test_example.
+16. Only add instrumentation around existing lines.
+17. Do NOT add any new lines of code that are not related to logging, screenshots, or Excel reporting.
+18. Do NOT add any new functions except a run() function that calls the original function.
 
 
-        # Step 3: Generate test cases
-        status_container.info("📋 Step 3/4: Planning test cases...")
-        planner = PlannerAgentOSS()
-        test_cases_text = await planner.generate_response(refined_instruction)
-        status_container.success("✅ Step 3/4: Test cases generated")
-        
-        # Parse test cases
-        pattern = re.compile(
-            r'(?:(?:###\s*\d+\.\s*)?(.*?)\n)?'
-            r'(?:\*\*Description\*\*:\s*(.*?)\n)?'
-            r'(?:\*\*Preconditions\*\*:\s*(.*?)\n)?'
-            r'(?:\*\*Test Case Details\*\*:\s*(.*?)\n)?'
-            r'(?:\*\*Steps\*\*:\s*(.*?))?'
-            r'(?:\*\*Expected Result\*\*:\s*(.*?))?(?=\n###|\n##|$)',
-            re.DOTALL | re.MULTILINE
-        )
 
-        test_cases_list = []
-        for match in pattern.finditer(test_cases_text):
-            if not any(match.groups()):
-                continue
-            test_cases_list.append({
-                'name': (match.group(1) or "").strip(),
-                'description': (match.group(2) or "").strip(),
-                'preconditions': (match.group(3) or "").strip(),
-                'details': (match.group(4) or "").strip(),
-                'steps': (match.group(5) or "").strip(),
-                'expected': (match.group(6) or "").strip()
-            })
+Your task:
 
-        with open("test_cases.json", "w", encoding="utf-8") as f:
-            json.dump(test_cases_list, f, indent=2, ensure_ascii=False)
+1. Convert the provided function into a standalone runnable Playwright script.
+2. Preserve the original function EXACTLY as provided.
+3. You are ONLY allowed to add instrumentation around existing statements.
 
-        with st.expander(f"📋 View Generated Test Cases ({len(test_cases_list)} total)"):
-            st.json(test_cases_list)
+Instrumentation Requirements:
 
-        # Step 4: Generate unified script
-        status_container.info("💻 Step 4/4: Generating unified test suite...")
-        
-        all_cases_text = ""
-        for idx, tc in enumerate(test_cases_list):
-            all_cases_text += (
-                f"\n### Test Case {idx+1}: {tc['name']}\n"
-                f"Description: {tc['description']}\n"
-                f"Preconditions: {tc['preconditions']}\n"
-                f"Details: {tc['details']}\n"
-                f"Steps: {tc['steps']}\n"
-                f"Expected Result: {tc['expected']}\n"
-                "---------------------------------------------\n"
-            )
+• Add step-by-step PASS/FAIL tracking for EACH existing Playwright statement inside the provided function.
+• Each original statement must remain unchanged.
+• Each statement must be wrapped in try/except.
 
-        unified_message = f"""
-You are an expert QA automation engineer.
+For each step:
 
-Generate a **single unified Python Playwright script** that executes ALL the following test cases in one continuous flow.
+- On success:
+    - Capture screenshot: step_{{n}}_PASS.png
+    - Log PASS to console
+    - Append result to step_logs
 
-Requirements:
-- Use `with sync_playwright() as p:` once.
-- Launch browser only once (headless=True).
-- Reuse same `context` and `page`.
-- If login is required, perform it once at the start.
-- Implement each test case sequentially with try/except blocks.
-- After each test, print "✅ Test Passed - [Test Name]" or "❌ Test Failed - [Test Name]: [error]".
-- Even if one test fails, continue executing the rest.
-- Close the browser at the end.
-- Use self-healing locator strategies (ID, name, class name, tag name, CSS selector, XPath, role-based selectors, text-based selectors) prioritized by reliability and stability.
-- Cover all possible flows for each feature mentioned in the instruction and discovered during site crawling.
-- The features are the basic flow, alternative flow, pre-conditions, post-conditions, validations/rules mentioned in the instruction, and additional scenarios from crawled data.
-- First cover the core functionalities in detail which mainly includes basic flow, alternate flow, pre-conditions, post-conditions, validations/rules mentioned in the instruction.
-- Then cover test cases discovered during site crawling as well.
-- Then cover edge cases, error handling, and less common scenarios.
-- Use provided URL: {site_url}
-- Username: {username or 'N/A'}
-- Password: {password or 'N/A'}
-- Make sure there are no syntax errors.
-- Make sure if you add any comments or explainations or notes or additional paragraphs, they are in the form of python comments only.
+- On failure:
+    - Capture screenshot: step_{{n}}_FAIL.png
+    - Log FAIL with error message
+    - Append result to step_logs
 
-Here are the test cases:
-{all_cases_text}
+Runtime Requirements:
 
-Locator Recommendations and Context:
-{refined_instruction}
-{user_prompt}
+• Add a run() function that:
+    - Initializes Playwright
+    - Launches browser using:
+        browser = p.chromium.launch(headless=False, slow_mo=500)
+    - Creates context and page
+    - Calls the original function
+    - Saves step_logs to Excel:
+        test_results_{{timestamp}}.xlsx
+    - Prints execution summary
+
+
+KEEP the original function logic intact - only add instrumentation.
+
+
+
+Input function:
+```python
+{{input_code}}
+```
+
+Extra context:
+{{extra_context}}
+
+If you generate any step not present in {{input_code}}, the output is invalid.
+If you modify the original function logic, the output is invalid.
+
+
+Generate ONLY the Python script now. No explanations, no test cases, no documentation.
 """
 
-        generator = TestCodeGenerator()
-        code = await generator.generate_response(unified_message)
-        cleaned_code = clean_generated_code(code)
-        
-        with open("combined_test_suite.py", "w", encoding="utf-8") as f:
-            f.write(cleaned_code)
+# ────────────────────────────────────────────────
+#     NEW: TEST CASE PLANNING PROMPT (inspired by PlannerOSS)
+# ────────────────────────────────────────────────
+TESTCASE_PLAN_PROMPT = """\
+You are a test case documentation expert. Generate test cases for the provided Playwright script.
 
-        status_container.success("✅ Step 4/4: Unified test suite generated successfully!")
-        
-        return test_cases_text, cleaned_code, test_cases_list
+For context, use the flow mentioned in the original function, and generate test cases that cover the key features, user interactions, and expected outcomes in the script ONLY.
 
-    except Exception as e:
-        status_container.error(f"❌ Error: {str(e)}")
-        st.exception(e)
-        return None, None, None
+CRITICAL FORMATTING RULES:
+1. Use EXACTLY this format for each test case (no variations)
+2. Each field MUST start with "* " (asterisk + space)
+3. Each field MUST be on a single line (no multi-line values except Step-by-step actions)
+4. Test Case ID must be TC-1, TC-2, TC-3, etc. (sequential)
+5. Separate test cases with ONE blank line
 
-# Main UI
-def main():
-    st.markdown('<p class="main-header">🤖 Automation Test Script Generation</p>', unsafe_allow_html=True)
+REQUIRED FORMAT PER TEST CASE:
+
+* High Level Feature: [Category]
+* Test Case ID: TC-[Number]
+* Feature Name: [Specific feature of the script that is being tested. E.g. "Booking Flow", "Login Functionality", etc.]
+* Test Scenario: [Summary of the user interaction or feature being tested in one line]
+* Test Case: [Title]
+* Test Case Description: [Details in one line of the feature being tested.]
+* Step-by-step actions: [Single paragraph with all steps, no numbering]
+* Possible Values: [Data or None]
+* Sources: [Sources or None]
+* Expected Result: [Pass criteria in one line]
+* Data Correctness Checked: [Yes/No]
+* Release/Platform Version: Web
+* Automation Possibility: [Yes/No]
+* Testing Type: [Type]
+* Priority: [High/Medium/Low]
+
+EXAMPLE:
+
+ OUTPUT the test cases in the following format:
+        STRICTLY ADHERE TO THIS FORMAT:
+        - Test Case ID: TC-<number>
+        - High Level Feature
+        - Feature Name
+        - Test Scenario
+        - Test Case
+        - Test Case Description
+        - Step-by-step actions
+        - Possible Values (if applicable, Type 'None' if there is none for a specific case)
+        - Sources (if applicable, Type 'N/A' if there is none for a specific case)
+        - Expected Result
+        - Data Correctness Checked (if applicable, Type 'N/A' if there is none for a specific case)
+        - Release/Platform Version (Web/Mobile/IOS/Android etc. If not applicable, write 'N/A')
+        - Automation Possibility
+        - Testing Type
+        - Priority
+
+NOW GENERATE TEST CASES FOR THIS SCRIPT:
+```python
+{{input_code}}
+```
+
+Generate 20-25 test cases now. Follow the format exactly.
+"""
+
+def clean_generated_code(raw: str) -> str:
+    """
+    Aggressive cleaning: remove ALL non-code content including test case docs.
+    """
+    lines = raw.splitlines()
+    cleaned = []
     
-    st.markdown("""
-    <div class="info-box">
-    <b>Welcome to the Automation Test Script Generation!</b><br>
-    This tool helps you automatically generate comprehensive test cases and Playwright automation scripts from natural language instructions.
-    </div>
-    """, unsafe_allow_html=True)
-
-    # Sidebar for configuration
-    with st.sidebar:
-        # st.header("⚙️ Configuration")
-        # st.info(f"**Model:** {DEFAULT_GROQ_MODEL}")
+    # Skip until we find the first import
+    found_code_start = False
+    
+    for line in lines:
+        stripped = line.strip()
         
+        # Skip markdown code fences
+        if stripped.startswith('```'):
+            continue
+            
+        # Look for code start
+        if not found_code_start:
+            if stripped.startswith(('from ', 'import ')):
+                found_code_start = True
+            else:
+                continue
+        
+        # After code starts, filter out test case documentation
+        # Skip lines that are clearly test case docs (even as comments)
+        if any(keyword in stripped.lower() for keyword in [
+            'test case id:', 'tc-', 'high level feature:', 'feature name:',
+            'test scenario:', 'test case:', 'test case description:',
+            'step-by-step actions:', 'possible values:', 'sources:',
+            'expected result:', 'data correctness checked:', 
+            'release/platform version:', 'automation possibility:',
+            'testing type:', 'priority:', '**test cases:**'
+        ]):
+            continue
+            
+        # Skip markdown-style bullets/headers (even in comments)
+        if re.match(r'^\s*[#*\-•]\s*[A-Z]', stripped):
+            continue
+            
+        # Skip numbered list items that look like test case headers
+        if re.match(r'^\s*\d+\.\s*\*\*', stripped):
+            continue
+        
+        # Keep the line if it passed all filters
+        cleaned.append(line)
+    
+    result = '\n'.join(cleaned).strip()
+    
+    # Remove any remaining markdown artifacts
+    result = re.sub(r'\*\*(.+?)\*\*', r'\1', result)  # Remove bold
+    
+    return result
+
+def parse_and_export_testcases(test_cases_str: str):
+    """
+    Parse test cases with improved regex that handles the strict format.
+    """
+    # Split by test case blocks (look for "Test Case ID: TC-")
+    test_blocks = re.split(r'\n(?=\* High Level Feature:)', test_cases_str.strip())
+    
+    all_data = []
+    st.session_state.test_cases_list = []
+    
+    for block in test_blocks:
+        if not block.strip():
+            continue
+            
+        data = {
+            'High Level Feature': '',
+            'Test Case ID': '',
+            'Feature Name': '',
+            'Test Scenario': '',
+            'Test Case': '',
+            'Test Case Description': '',
+            'Step-by-step actions': '',
+            'Possible Values': '',
+            'Sources': '',
+            'Expected Result': '',
+            'Data Correctness Checked': '',
+            'Release/Platform Version': '',
+            'Automation Possibility': '',
+            'Testing Type': '',
+            'Priority': ''
+        }
+        
+        # Extract each field with simple, specific regex
+        patterns = {
+            'High Level Feature': r'\* High Level Feature:\s*(.+?)(?=\n\*|\Z)',
+            'Test Case ID': r'\* Test Case ID:\s*(.+?)(?=\n\*|\Z)',
+            'Feature Name': r'\* Feature Name:\s*(.+?)(?=\n\*|\Z)',
+            'Test Scenario': r'\* Test Scenario:\s*(.+?)(?=\n\*|\Z)',
+            'Test Case': r'\* Test Case:\s*(.+?)(?=\n\*|\Z)',
+            'Test Case Description': r'\* Test Case Description:\s*(.+?)(?=\n\*|\Z)',
+            'Step-by-step actions': r'\* Step-by-step actions:\s*(.+?)(?=\n\*|\Z)',
+            'Possible Values': r'\* Possible Values:\s*(.+?)(?=\n\*|\Z)',
+            'Sources': r'\* Sources:\s*(.+?)(?=\n\*|\Z)',
+            'Expected Result': r'\* Expected Result:\s*(.+?)(?=\n\*|\Z)',
+            'Data Correctness Checked': r'\* Data Correctness Checked:\s*(.+?)(?=\n\*|\Z)',
+            'Release/Platform Version': r'\* Release/Platform Version:\s*(.+?)(?=\n\*|\Z)',
+            'Automation Possibility': r'\* Automation Possibility:\s*(.+?)(?=\n\*|\Z)',
+            'Testing Type': r'\* Testing Type:\s*(.+?)(?=\n\*|\Z)',
+            'Priority': r'\* Priority:\s*(.+?)(?=\n\*|\Z)',
+        }
+        
+        for key, pattern in patterns.items():
+            match = re.search(pattern, block, re.DOTALL | re.IGNORECASE)
+            if match:
+                value = match.group(1).strip()
+                # Clean up any remaining formatting
+                value = re.sub(r'\s+', ' ', value)  # Normalize whitespace
+                data[key] = value
+        
+        # Only add if we found a Test Case ID
+        if data['Test Case ID']:
+            all_data.append(data)
+            st.session_state.test_cases_list.append(data)
+    
+    # Export to Excel
+    output_path = "cleaned_generated_test_cases.xlsx"
+    if all_data:
+        df = pd.DataFrame(all_data)
+        
+        try:
+            df.to_excel(output_path, index=False)
+            
+            # Format Excel
+            wb = load_workbook(output_path)
+            ws = wb.active
+            for col in ws.columns:
+                max_length = 0
+                column = get_column_letter(col[0].column)
+                for cell in col:
+                    cell.alignment = Alignment(wrap_text=True, vertical='top')
+                    if cell.value:
+                        max_length = max(max_length, len(str(cell.value)))
+                
+                adjusted_width = min((max_length + 2) * 1.2, 70)
+                ws.column_dimensions[column].width = adjusted_width
+            
+            wb.save(output_path)
+            st.success(f"✅ {len(all_data)} test cases exported to {output_path}")
+            return True
+        except Exception as e:
+            st.error(f"Error saving Excel: {e}")
+            return False
+    else:
+        st.warning("⚠️ No test cases parsed. Check LLM output format.")
+        st.expander("Raw LLM Output").code(test_cases_str)
+        return False
+import streamlit as st
+import asyncio
+import pandas as pd
+from datetime import datetime
+
+# Assume these already exist in your project
+# TRANSFORM_PROMPT
+# TESTCASE_PLAN_PROMPT
+# GroqAgent
+# clean_generated_code
+# parse_and_export_testcases
+
+
+def main():
+    st.markdown(
+        '<div class="main-title">🤖 Automation Test Script Generation</div>',
+        unsafe_allow_html=True
+    )
+
+    st.markdown(
+    """
+    <style>
+    /* Light blue Generate button */
+    div.stButton > button,
+    div.stFormSubmitButton > button {
+        background: #aee1ff !important;
+        color: #00334d !important;
+        font-weight: 600 !important;
+        border-radius: 10px !important;
+        height: 48px !important;
+        border: none !important;
+        box-shadow: none !important;
+    }
+
+    /* Hover state */
+    div.stButton > button:hover,
+    div.stFormSubmitButton > button:hover {
+        background: #9fd8fb !important;
+        color: #00334d !important;
+    }
+
+    /* Remove Streamlit primary gradient */
+    div.stButton > button:focus,
+    div.stFormSubmitButton > button:focus {
+        background: #aee1ff !important;
+        box-shadow: 0 0 0 2px rgba(174, 225, 255, 0.6) !important;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True
+)
+
+    
+    st.markdown(
+        """
+        <style>
+        /* Page background */
+        .stApp {
+            background-color: #f6f7f9;
+        }
+
+        /* Main title */
+        .main-title {
+            text-align: center;
+            font-size: 26px;
+            font-weight: 600;
+            margin-bottom: 20px;
+        }
+
+        /* Info banner */
+        .info-banner {
+            background-color: #dff3f6;
+            padding: 18px;
+            border-radius: 10px;
+            font-size: 15px;
+            margin-bottom: 25px;
+        }
+
+        /* Section headers */
+        .section-header {
+            font-size: 20px;
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+
+        /* Card container */
+        .card {
+            background-color: #ffffff;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            margin-bottom: 30px;
+        }
+
+        /* Generate button */
+        div.stButton > button,
+        div.stDownloadButton > button {
+            background-color: #aee1ff !important;
+            color: #00334d !important;
+            font-weight: 600;
+            border-radius: 8px;
+            height: 46px;
+            border: none;
+        }
+
+        div.stButton > button:hover {
+            background-color: #97d6fb !important;
+        }
+
+        /* Sidebar polish only (content unchanged) */
+        section[data-testid="stSidebar"] {
+            background-color: #f1f3f5;
+        }
+
+        </style>
+        """,
+        unsafe_allow_html=True
+    )
+
+    st.markdown(
+        """
+        <div class="info-banner">
+        <strong>Welcome to the Playwright Test Runner!</strong><br>
+        Paste a function generated by Playwright codegen → get a full runnable test script 
+        with step-level pass/fail tracking, Excel report and test case documentation.
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+
+    # ---------------- Sidebar ----------------
+    with st.sidebar:
         st.markdown("---")
         st.header("📚 How to Use")
         st.markdown("""
-        1. Enter your automation instruction
-        2. Provide the target URL
-        3. Add credentials if login is required
-        4. Click 'Generate Test Suite'
-        5. Review and download the generated code
-        """)
-        
-        st.markdown("---")
-        st.header("ℹ️ About")
-        st.markdown("""
-        This tool uses AI to:
-        - Crawl and analyze websites
-        - Generate comprehensive test cases
-        - Create executable Playwright scripts
-        - Support self-healing locators
-        """)
-
-    # Main input form
-    with st.form("automation_form"):
-        st.subheader("📝 Automation Details")
-        
-        user_prompt = st.text_area(
-            "Automation Instruction",
-            placeholder="Example: Test login functionality on https://example.com with username='testuser' and password='testpass123'",
-            height=120,
-            help="Describe what you want to test. Include URL and credentials if needed."
+            1. Paste your Playwright codegen function in the text area below.
+            2. (Optional) Add any extra context or expected results to help the LLM generate better test cases.
+            3. Click 'Generate Runnable Test + Test Cases'.
+            4. Download the generated Python script (.py) and test cases (Excel).
+            5. Run the script locally to execute the tests and get an execution report in Excel
+        """
         )
-        
-        col1, col2 = st.columns(2)
-        with col1:
-            site_url = st.text_input(
-                "Target URL",
-                placeholder="https://example.com",
-                help="The website URL to test"
-            )
-        
-        with col2:
-            max_pages = st.number_input(
-                "Max Pages to Crawl",
-                min_value=1,
-                max_value=20,
-                value=5,
-                help="Number of pages to crawl for site analysis"
-            )
-        
-        col3, col4 = st.columns(2)
-        with col3:
-            username = st.text_input(
-                "Username",
-                placeholder="testuser",
-                help="Username for login (if required)"
-            )
-        
-        with col4:
-            password = st.text_input(
-                "Password",
-                type="password",
-                placeholder="••••••••",
-                help="Password for login (if required)"
-            )
-        
-        submit_button = st.form_submit_button("🚀 Generate Test Suite", use_container_width=True, type="primary")
 
-    # Process form submission
-    if submit_button:
-        if not user_prompt:
-            st.error("❌ Please enter an automation instruction")
-            return
-        
-        # Extract URL from prompt if not provided separately
-        if not site_url:
-            url_match = re.search(r'(https?://[^\s]+)', user_prompt)
-            site_url = url_match.group(1) if url_match else None
-        
-        # Extract credentials from prompt if not provided separately
-        if not username:
-            username_match = re.search(r"username\s*=\s*'([^']+)'", user_prompt)
-            username = username_match.group(1) if username_match else ""
-        
-        if not password:
-            password_match = re.search(r"password\s*=\s*'([^']+)'", user_prompt)
-            password = password_match.group(1) if password_match else ""
-        
-        # Progress tracking
-        progress_bar = st.progress(0)
-        status_container = st.empty()
-        
-        # Run the automation pipeline
-        with st.spinner("Processing..."):
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-            
-            test_cases_text, cleaned_code, test_cases_list = loop.run_until_complete(
-                run_automation_pipeline(user_prompt, site_url, username, password, status_container)
-            )
-            
-            progress_bar.progress(100)
-        
-        if cleaned_code:
-            st.markdown("---")
-            st.markdown('<div class="step-header">🎉 Generation Complete!</div>', unsafe_allow_html=True)
-            
-            # Display results in tabs
-            tab1, tab2, tab3 = st.tabs(["📄 Test Cases", "💻 Generated Code", "📊 Summary"])
-            
-            with tab1:
-                st.subheader(f"Generated Test Cases ({len(test_cases_list)} total)")
-                
-                # Search and filter
-                search_term = st.text_input("🔍 Search test cases", placeholder="Type to filter...")
-                
-                filtered_cases = test_cases_list
-                if search_term:
-                    filtered_cases = [
-                        tc for tc in test_cases_list 
-                        if search_term.lower() in tc.get('name', '').lower() or 
-                           search_term.lower() in tc.get('description', '').lower()
-                    ]
-                
-                st.info(f"Showing {len(filtered_cases)} of {len(test_cases_list)} test cases")
-                
-                for idx, tc in enumerate(filtered_cases, 1):
-                    with st.expander(f"**{idx}. {tc.get('name', 'Unnamed Test')}**"):
-                        st.markdown(f"**Description:** {tc.get('description', 'N/A')}")
-                        st.markdown(f"**Preconditions:** {tc.get('preconditions', 'N/A')}")
-                        st.markdown(f"**Details:** {tc.get('details', 'N/A')}")
-                        st.markdown(f"**Steps:**\n{tc.get('steps', 'N/A')}")
-                        st.markdown(f"**Expected Result:** {tc.get('expected', 'N/A')}")
-                
-                # Download test cases as JSON
-                st.download_button(
-                    label="📥 Download Test Cases (JSON)",
-                    data=json.dumps(test_cases_list, indent=2, ensure_ascii=False),
-                    file_name=f"test_cases_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json",
-                    mime="application/json"
+        st.markdown("---")
+
+        st.markdown("### ℹ️ About")
+        st.markdown(
+            """
+            This tool:
+
+            1. Takes raw codegen output  
+            2. Adds detailed step-by-step pass/fail checks  
+            3. Generates Excel execution report  
+            4. Generates test case documentation in Excel  
+            5. Opens browser visibly so you can watch
+            """
+        )
+
+    # ---------------- Main UI ----------------
+    st.markdown('', unsafe_allow_html=True)
+    st.markdown('📝 Test Generation', unsafe_allow_html=True)
+
+    with st.form("playwright_test_form"):
+        code_input = st.text_area(
+            "Paste Playwright Codegen Function",
+            placeholder="""def test_example():
+    page.goto("https://example.com")
+    page.fill("#username", "testuser")
+    page.fill("#password", "testpass123")
+    page.click("button[type=submit]")
+    page.wait_for_selector("text=Dashboard")""",
+            height=240,
+            help="Paste only the function generated by Playwright codegen (sync API)."
+        )
+
+        extra_context = st.text_input(
+            "Additional Context (optional)",
+            placeholder="URL = https://myapp.com, should see 'Welcome' message after login, check cart count = 2",
+            help="Any URL, login info, expected text, assertions, or special notes"
+        )
+
+        submitted = st.form_submit_button(
+            "🚀 Generate Runnable Test + Test Cases",
+            use_container_width=True,
+            type="primary"
+        )
+
+    st.markdown('', unsafe_allow_html=True)
+
+    # ---------------- Submission Handling ----------------
+    if submitted:
+        if not code_input.strip():
+            st.error("⚠️ Please paste a Playwright codegen function first.")
+        else:
+            with st.spinner("🔄 Generating instrumented script & test cases..."):
+
+                # -------- 1. Generate runnable script --------
+                script_prompt = TRANSFORM_PROMPT.format(
+                    input_code=code_input.strip(),
+                    extra_context=extra_context.strip()
+                    if extra_context else "No extra context provided."
                 )
-            
-            with tab2:
-                st.subheader("Generated Playwright Test Suite")
-                
-                # Code editor with syntax highlighting
-                st.code(cleaned_code, language="python", line_numbers=True)
-                
-                col1, col2 = st.columns([2, 1])
-                with col1:
-                    st.download_button(
-                        label="📥 Download Test Suite (.py)",
-                        data=cleaned_code,
-                        file_name=f"combined_test_suite_{datetime.now().strftime('%Y%m%d_%H%M%S')}.py",
-                        mime="text/x-python"
-                    )
-                
-                with col2:
-                    if st.button("📋 Copy to Clipboard"):
-                        st.info("Code copied! (use Ctrl+C on the code block)")
-                
-                # Instructions
-                st.markdown("---")
-                st.markdown("### 🚀 How to Run")
-                st.code("""
-# Install Playwright if not already installed
-pip install playwright
+
+                script_agent = GroqAgent(system_prompt=script_prompt)
+                script_response = asyncio.run(
+                    script_agent.generate("Generate the full runnable script now.")
+                )
+
+                generated_code = clean_generated_code(script_response)
+
+                # -------- 2. Generate test cases --------
+                testcase_prompt = TESTCASE_PLAN_PROMPT.format(
+                    input_code=code_input.strip(),
+                    extra_context=extra_context.strip()
+                    if extra_context else "No extra context provided."
+                )
+
+                testcase_agent = GroqAgent(system_prompt=testcase_prompt)
+                testcase_response = asyncio.run(
+                    testcase_agent.generate("Generate the test cases now.")
+                )
+
+            # -------- Display Generated Script --------
+            st.markdown('', unsafe_allow_html=True)
+            st.markdown('🎉 Generated Runnable Test Script', unsafe_allow_html=True)
+
+            st.code(generated_code, language="python", line_numbers=True)
+
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            script_filename = f"playwright_test_{timestamp}.py"
+
+            st.download_button(
+                label="📥 Download Test Script (.py)",
+                data=generated_code,
+                file_name=script_filename,
+                mime="text/x-python",
+                use_container_width=True
+            )
+
+            st.markdown("### 💡 How to run it")
+            st.code(
+                f"""# Install dependencies (once)
+pip install playwright pandas openpyxl
 playwright install
 
-# Run the generated test suite
-python combined_test_suite.py
-                """, language="bash")
-            
-            with tab3:
-                st.subheader("📊 Generation Summary")
-                
-                col1, col2, col3 = st.columns(3)
-                with col1:
-                    st.metric("Total Test Cases", len(test_cases_list))
-                with col2:
-                    st.metric("Code Lines", len(cleaned_code.splitlines()))
-                with col3:
-                    st.metric("Target URL", "✓" if site_url else "✗")
-                
-                st.markdown("---")
-                
-                # Categorize test cases by type
-                test_types = {}
-                for tc in test_cases_list:
-                    name = tc.get('name', '')
-                    # Extract test type from name (e.g., "Functional - Login Success")
-                    if ' - ' in name:
-                        test_type = name.split(' - ')[0].strip()
-                    else:
-                        test_type = "General"
-                    
-                    test_types[test_type] = test_types.get(test_type, 0) + 1
-                
-                if test_types:
-                    st.subheader("Test Case Distribution")
-                    for test_type, count in sorted(test_types.items(), key=lambda x: x[1], reverse=True):
-                        st.markdown(f"**{test_type}:** {count} test case(s)")
-                
-                st.markdown("---")
-                st.markdown("### ✅ Next Steps")
-                st.markdown("""
-                1. Review the generated test cases and code
-                2. Download the test suite
-                3. Customize as needed for your specific requirements
-                4. Install Playwright if not already installed
-                5. Run the test suite and review results
-                6. Integrate into your CI/CD pipeline
-                """)
-                
-                # Session info
-                st.markdown("---")
-                st.info(f"""
-                **Generation Details:**
-                - Timestamp: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
-                - Model: {DEFAULT_GROQ_MODEL}
-                - Target URL: {site_url or 'Not specified'}
-                - Login Required: {'Yes' if username and password else 'No'}
-                """)
+# Run the script
+python {script_filename}
 
-    # Footer
-    st.markdown("---")
-    
+# Output:
+# → Browser opens (visible)
+# → Steps logged with PASS/FAIL
+# → Excel report: test_results_*.xlsx
+""",
+                language="bash"
+            )
+
+            # -------- Display & Export Test Cases --------
+            st.markdown('', unsafe_allow_html=True)
+            st.markdown('📋 Generated Test Cases', unsafe_allow_html=True)
+
+            # Uses your existing function
+            parse_and_export_testcases(testcase_response)
+
+            # Preview parsed test cases (optional)
+            if (
+                'test_cases_list' in st.session_state
+                and st.session_state.test_cases_list
+            ):
+                df = pd.DataFrame(st.session_state.test_cases_list)
+
+                st.dataframe(
+                    df,
+                    column_config={
+                        "Step-by-step actions": st.column_config.TextColumn(width="medium"),
+                        "Expected Result": st.column_config.TextColumn(width="medium"),
+                        "Test Case Description": st.column_config.TextColumn(width="medium"),
+                    },
+                    use_container_width=True,
+                    hide_index=True
+                )
+
+                # Download Excel
+                try:
+                    with open("cleaned_generated_test_cases.xlsx", "rb") as f:
+                        st.download_button(
+                            label="📥 Download Test Cases Excel",
+                            data=f,
+                            file_name=f"test_cases_{timestamp}.xlsx",
+                            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                            use_container_width=True
+                        )
+                except FileNotFoundError:
+                    st.warning("Excel file was not created successfully.")
+            else:
+                st.info("No structured test cases detected in response. Raw output:")
+                st.code(testcase_response, language="text")
+
+            st.markdown('', unsafe_allow_html=True)
+            st.markdown(
+                """
+                ✅ Done! Download script and run locally. Test cases saved as Excel.
+                """,
+                unsafe_allow_html=True
+            )
+
+
 if __name__ == "__main__":
-
     main()
-
-
-
-
-
-
