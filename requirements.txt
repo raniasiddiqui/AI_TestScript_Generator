@@ -2,3 +2,5 @@ streamlit
 groq
 playwright
 nest_asyncio
+pandas
+openpyxl
