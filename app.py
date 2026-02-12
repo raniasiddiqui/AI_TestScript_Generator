@@ -375,6 +375,8 @@ NOW GENERATE TEST CASES FOR THIS SCRIPT:
 Extract flows from the provided script and generate test cases ONLY for flows that actually exist in the script.
 Do NOT invent features.
 Use actual button names, actual URLs, and actual assertions present in the script.
+Generate all possible testcases that exist (20-25) ONLY FOR FLOWS THAT EXIST IN MY ORIGINAL SCRIPT THAT I INPUT. 
+Donot repeat testcases, give me distinct ones for flows/functionality that exist in my original script.
 
 """
 
@@ -843,6 +845,7 @@ python {script_filename}
 
 if __name__ == "__main__":
     main()
+
 
 
 
