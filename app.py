@@ -283,11 +283,11 @@ For each original statement:
 
 try:
     ORIGINAL LINE HERE
-    page.screenshot(path=f"step_{step_number}_PASS.png")
-    step_logs.append(f"Step {step_number}: PASS")
+    page.screenshot(path=f"step_{{step_number}}_PASS.png")
+    step_logs.append(f"Step {{step_number}}: PASS")
 except Exception as e:
-    page.screenshot(path=f"step_{step_number}_FAIL.png")
-    step_logs.append(f"Step {step_number}: FAIL - {str(e)}")
+    page.screenshot(path=f"step_{{step_number}}_FAIL.png")
+    step_logs.append(f"Step {{step_number}}: FAIL - {str(e)}")
 step_number += 1
 
 DO NOT merge steps.
@@ -842,4 +842,5 @@ python {script_filename}
 
 if __name__ == "__main__":
     main()
+
 
