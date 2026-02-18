@@ -247,6 +247,72 @@ class GroqAgent:
 # ────────────────────────────────────────────────
 #          ORIGINAL SCRIPT GENERATION PROMPT (unchanged)
 # ────────────────────────────────────────────────
+# TRANSFORM_PROMPT = """
+# You are a strict Playwright instrumentation engine.
+
+# You will receive ONE Playwright function.
+
+# Your job is NOT to rewrite it.
+# Your job is NOT to improve it.
+# Your job is NOT to create a sample.
+# Your job is ONLY to instrument it.
+
+# STRICT RULES:
+
+# 1. Copy the original function definition EXACTLY as provided.
+# 2. Copy EVERY original line EXACTLY as-is.
+# 3. DO NOT change indentation.
+# 4. DO NOT change locators.
+# 5. DO NOT change URLs.
+# 6. DO NOT remove expect statements.
+# 7. DO NOT modify function signature.
+# 8. DO NOT create a new example.
+# 9. DO NOT invent steps.
+
+# You are ONLY allowed to:
+
+# - Add try/except around EACH original executable statement
+# - Add screenshot capture
+# - Add step_logs.append(...)
+# - Add step counter increment
+# - Add a run() wrapper outside the function
+
+# INSTRUMENTATION PATTERN:
+
+# For each original statement:
+
+# try:
+#     ORIGINAL LINE HERE
+#     page.screenshot(path=f"step_{{step_number}}_PASS.png")
+#     step_logs.append(f"Step {{step_number}}: PASS")
+# except Exception as e:
+#     page.screenshot(path=f"step_{{step_number}}_FAIL.png")
+#     step_logs.append(f"Step {{step_number}}: FAIL - {{str(e)}}")
+
+# step_number += 1
+
+# DO NOT merge steps.
+# Each original line = one try block.
+
+# After copying and instrumenting the function:
+
+# Add:
+
+# - step_logs = []
+# - step_number = 1
+# - run() function that:
+#     - launches browser
+#     - creates page
+#     - calls original function
+#     - writes Excel file
+
+# Output ONLY Python code.
+
+# Now instrument this function EXACTLY:
+
+# {input_code}
+# """
+
 TRANSFORM_PROMPT = """
 You are a strict Playwright instrumentation engine.
 
@@ -255,19 +321,20 @@ You will receive ONE Playwright function.
 Your job is NOT to rewrite it.
 Your job is NOT to improve it.
 Your job is NOT to create a sample.
-Your job is ONLY to instrument it.
+Your job is ONLY to instrument it and add validation
+based on page.get_by_text() that already exists in the input.
 
 STRICT RULES:
 
-1. Copy the original function definition EXACTLY as provided.
+1. Copy the original function EXACTLY as provided.
 2. Copy EVERY original line EXACTLY as-is.
 3. DO NOT change indentation.
 4. DO NOT change locators.
 5. DO NOT change URLs.
-6. DO NOT remove expect statements.
+6. DO NOT remove existing expect statements.
 7. DO NOT modify function signature.
-8. DO NOT create a new example.
-9. DO NOT invent steps.
+8. DO NOT invent new steps.
+9. DO NOT change execution order.
 
 You are ONLY allowed to:
 
@@ -275,44 +342,81 @@ You are ONLY allowed to:
 - Add screenshot capture
 - Add step_logs.append(...)
 - Add step counter increment
-- Add a run() wrapper outside the function
+- Add validation using page.get_by_text text from input
+- Add run() wrapper
 
-INSTRUMENTATION PATTERN:
+------------------------------------------------------------
+SMART PAGE-BY-TEXT VALIDATION RULE
+------------------------------------------------------------
+
+1. First, scan the ORIGINAL function.
+2. Extract any text used inside:
+       expect(page.locator("body")).to_contain_text('')
+
+3. Treat that text as EXPECTED_PAGE_TEXT.
+
+4. After EACH successful original statement,
+   add a PARTIAL MATCH validation:
+
+       expect(page.locator("body")).to_contain_text(EXPECTED_PAGE_TEXT)
+
+5. This must:
+   - Be inside try block
+   - Come AFTER the original line
+   - Not replace original expect statements
+   - Not modify business logic
+
+6. If multiple get_by_text values exist,
+   use the most recent one encountered above the current step.
+
+7. If no get_by_text exists in input,
+   then use:
+       expect(page.locator("body")).not_to_be_empty()
+
+------------------------------------------------------------
+INSTRUMENTATION PATTERN
+------------------------------------------------------------
 
 For each original statement:
 
 try:
     ORIGINAL LINE HERE
+
+    expect(page.locator("body")).to_contain_text("ExtractedExpectedText")
+
     page.screenshot(path=f"step_{{step_number}}_PASS.png")
     step_logs.append(f"Step {{step_number}}: PASS")
+
 except Exception as e:
     page.screenshot(path=f"step_{{step_number}}_FAIL.png")
     step_logs.append(f"Step {{step_number}}: FAIL - {{str(e)}}")
 
 step_number += 1
 
-DO NOT merge steps.
-Each original line = one try block.
+------------------------------------------------------------
 
-After copying and instrumenting the function:
+Each original line = one try block.
+Do NOT merge steps.
+Do NOT change logic.
+
+After instrumenting:
 
 Add:
-
 - step_logs = []
 - step_number = 1
-- run() function that:
-    - launches browser
-    - creates page
-    - calls original function
-    - writes Excel file
+- run() wrapper
+- browser headless=False
+- maximized
+- Excel report writing
 
-Output ONLY Python code.
+Output ONLY valid Python code.
+No explanations.
+No markdown.
 
 Now instrument this function EXACTLY:
 
 {input_code}
 """
-
 
 # ────────────────────────────────────────────────
 #     NEW: TEST CASE PLANNING PROMPT (inspired by PlannerOSS)
@@ -845,6 +949,7 @@ python {script_filename}
 
 if __name__ == "__main__":
     main()
+
 
 
 
