@@ -346,7 +346,7 @@ You are ONLY allowed to:
 - Add run() wrapper
 
 ------------------------------------------------------------
-SMART PAGE-BY-TEXT VALIDATION RULE
+SMART PAGE-BY-TEXT VALIDATION RULE (PARTIAL KEY MATCHING)
 ------------------------------------------------------------
 
 1. First, scan the ORIGINAL function.
@@ -355,21 +355,31 @@ SMART PAGE-BY-TEXT VALIDATION RULE
 
 3. Treat that text as EXPECTED_PAGE_TEXT.
 
-4. After EACH successful original statement,
-   add a PARTIAL MATCH validation:
+4. Convert EXPECTED_PAGE_TEXT into partial keywords by:
+   - Splitting text into words
+   - Removing extra whitespace
+   - Ignoring empty values
+   - Converting to lowercase
 
-       expect(page.locator("body")).to_contain_text(EXPECTED_PAGE_TEXT)
+5. After EACH successful original statement,
+   add PARTIAL KEY MATCH validation using:
 
-5. This must:
+       page_text = page.locator("body").inner_text().lower()
+
+       for keyword in EXPECTED_PAGE_TEXT.split():
+           if keyword.strip():
+               assert keyword.lower() in page_text, f"{{keyword}} not found in page"
+
+6. This must:
    - Be inside try block
    - Come AFTER the original line
    - Not replace original expect statements
    - Not modify business logic
 
-6. If multiple get_by_text values exist,
+7. If multiple to_contain_text values exist,
    use the most recent one encountered above the current step.
 
-7. If no get_by_text exists in input,
+8. If no to_contain_text exists in input,
    then use:
        expect(page.locator("body")).not_to_be_empty()
 
@@ -382,7 +392,10 @@ For each original statement:
 try:
     ORIGINAL LINE HERE
 
-    expect(page.locator("body")).to_contain_text("ExtractedExpectedText")
+    page_text = page.locator("body").inner_text().lower()
+    for keyword in "ExtractedExpectedText".split():
+        if keyword.strip():
+            assert keyword.lower() in page_text, f"{{keyword}} not found in page"
 
     page.screenshot(path=f"step_{{step_number}}_PASS.png")
     step_logs.append(f"Step {{step_number}}: PASS")
@@ -417,6 +430,7 @@ Now instrument this function EXACTLY:
 
 {input_code}
 """
+
 
 # ────────────────────────────────────────────────
 #     NEW: TEST CASE PLANNING PROMPT (inspired by PlannerOSS)
@@ -949,6 +963,7 @@ python {script_filename}
 
 if __name__ == "__main__":
     main()
+
 
 
 
