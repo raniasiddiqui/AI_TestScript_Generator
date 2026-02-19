@@ -322,7 +322,7 @@ Your job is NOT to rewrite it.
 Your job is NOT to improve it.
 Your job is NOT to create a sample.
 Your job is ONLY to instrument it and add validation
-based on page.get_by_text() that already exists in the input.
+based on expect(...).to_contain_text() that already exists in the input.
 
 STRICT RULES:
 
@@ -342,46 +342,85 @@ You are ONLY allowed to:
 - Add screenshot capture
 - Add step_logs.append(...)
 - Add step counter increment
-- Add validation using page.get_by_text text from input
+- Add validation using Playwright expect()
 - Add run() wrapper
 
 ------------------------------------------------------------
-SMART PAGE-BY-TEXT VALIDATION RULE (PARTIAL KEY MATCHING)
+STABLE PAGE VALIDATION RULE (PLAYWRIGHT NATIVE – NO SPLITTING)
 ------------------------------------------------------------
 
 1. First, scan the ORIGINAL function.
+
 2. Extract any text used inside:
-       expect(page.locator("body")).to_contain_text('')
+       expect(page.locator("body")).to_contain_text("...")
 
 3. Treat that text as EXPECTED_PAGE_TEXT.
 
-4. Convert EXPECTED_PAGE_TEXT into partial keywords by:
-   - Splitting text into words
-   - Removing extra whitespace
-   - Ignoring empty values
-   - Converting to lowercase
+4. DO NOT split text by whitespace.
+   DO NOT use inner_text().
+   DO NOT manually assert string inclusion.
 
-5. After EACH successful original statement,
-   add PARTIAL KEY MATCH validation using:
+5. Instead, generate stable partial validations by:
 
-       page_text = page.locator("body").inner_text().lower()
+   - Extracting 3–6 meaningful anchor phrases from EXPECTED_PAGE_TEXT.
+   - Anchors must be human-readable phrases.
+   - Ignore numeric-only fragments.
+   - Ignore long concatenated text.
+   - Ignore special characters like "•".
+   - Prefer phrases containing words (minimum 3 characters).
+   - Keep phrases as natural UI labels.
 
-       for keyword in EXPECTED_PAGE_TEXT.split():
-           if keyword.strip():
-               assert keyword.lower() in page_text, f"{{keyword}} not found in page"
+   Example:
+       From:
+       "Beach HutsA-30 AlphaHawksBay, KarachiFull-day access..."
 
-6. This must:
-   - Be inside try block
+       Extract anchors like:
+       "Beach Huts"
+       "EFERT Guest House Daharki"
+       "Guest Houses"
+    This is an illustrative example only. Apply the script’s extraction rules to generate the anchors.
+
+6. After EACH successful original statement,
+   add validation using Playwright's built-in expect:
+
+       expect(page.locator("body")).to_contain_text(
+           re.compile(r"ANCHOR_TEXT", re.IGNORECASE)
+       )
+
+7. This validation must:
+
+   - Be inside the try block
    - Come AFTER the original line
-   - Not replace original expect statements
-   - Not modify business logic
+   - NOT replace original expect statements
+   - NOT modify business logic
+   - Use regex with re.IGNORECASE
+   - NEVER use manual string splitting
+   - NEVER use page.locator("body").inner_text()
 
-7. If multiple to_contain_text values exist,
-   use the most recent one encountered above the current step.
+8. If multiple to_contain_text values exist,
+   always use the MOST RECENT one encountered
+   above the current step.
 
-8. If no to_contain_text exists in input,
-   then use:
+9. If no to_contain_text exists in input,
+   use:
        expect(page.locator("body")).not_to_be_empty()
+
+------------------------------------------------------------
+WAITING RULE FOR NAVIGATION ACTIONS
+------------------------------------------------------------
+
+If the original line contains:
+    - page.goto(...)
+    - click()
+    - form submission
+    - navigation-triggering action
+
+Then validation must rely ONLY on Playwright's expect(),
+because it automatically waits for the element.
+
+Do NOT manually wait.
+Do NOT use sleep.
+Do NOT add wait_for_load_state unless present originally.
 
 ------------------------------------------------------------
 INSTRUMENTATION PATTERN
@@ -392,17 +431,17 @@ For each original statement:
 try:
     ORIGINAL LINE HERE
 
-    page_text = page.locator("body").inner_text().lower()
-    for keyword in "ExtractedExpectedText".split():
-        if keyword.strip():
-            assert keyword.lower() in page_text, f"{{keyword}} not found in page"
+    # Stable partial validation using anchor phrases
+    expect(page.locator("body")).to_contain_text(
+        re.compile(r"ANCHOR_PHRASE_1", re.IGNORECASE)
+    )
 
-    page.screenshot(path=f"step_{{step_number}}_PASS.png")
-    step_logs.append(f"Step {{step_number}}: PASS")
+    page.screenshot(path=f"step_{step_number}_PASS.png")
+    step_logs.append(f"Step {step_number}: PASS")
 
 except Exception as e:
-    page.screenshot(path=f"step_{{step_number}}_FAIL.png")
-    step_logs.append(f"Step {{step_number}}: FAIL - {{str(e)}}")
+    page.screenshot(path=f"step_{step_number}_FAIL.png")
+    step_logs.append(f"Step {step_number}: FAIL - {str(e)}")
 
 step_number += 1
 
@@ -411,25 +450,40 @@ step_number += 1
 Each original line = one try block.
 Do NOT merge steps.
 Do NOT change logic.
+Do NOT remove original expect statements.
 
-After instrumenting:
+------------------------------------------------------------
+AFTER INSTRUMENTING
+------------------------------------------------------------
 
 Add:
+
+- import re
 - step_logs = []
 - step_number = 1
 - run() wrapper
+- sync_playwright
 - browser headless=False
-- maximized
-- Excel report writing
+- args=["--start-maximized"]
+- context with no_viewport=True
+- Excel report writing using xlsxwriter
 
-Output ONLY valid Python code.
-No explanations.
-No markdown.
+------------------------------------------------------------
+
+CRITICAL OUTPUT RULES
+
+- Output ONLY valid Python code.
+- No explanations.
+- No markdown.
+- No commentary.
+- No formatting text.
+- No extra text before or after code.
 
 Now instrument this function EXACTLY:
 
 {input_code}
 """
+
 
 
 # ────────────────────────────────────────────────
@@ -963,6 +1017,7 @@ python {script_filename}
 
 if __name__ == "__main__":
     main()
+
 
 
 
