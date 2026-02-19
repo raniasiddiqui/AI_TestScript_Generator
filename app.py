@@ -436,12 +436,12 @@ try:
         re.compile(r"ANCHOR_PHRASE_1", re.IGNORECASE)
     )
 
-    page.screenshot(path=f"step_{step_number}_PASS.png")
-    step_logs.append(f"Step {step_number}: PASS")
+    page.screenshot(path=f"step_{{step_number}}_PASS.png")
+    step_logs.append(f"Step {{step_number}}: PASS")
 
 except Exception as e:
-    page.screenshot(path=f"step_{step_number}_FAIL.png")
-    step_logs.append(f"Step {step_number}: FAIL - {str(e)}")
+    page.screenshot(path=f"step_{{step_number}}_FAIL.png")
+    step_logs.append(f"Step {{step_number}}: FAIL - {{str(e)}}")
 
 step_number += 1
 
@@ -465,6 +465,7 @@ Add:
 - sync_playwright
 - browser headless=False
 - args=["--start-maximized"]
+- slow_mo = 1000
 - context with no_viewport=True
 - Excel report writing using xlsxwriter
 
@@ -1017,6 +1018,7 @@ python {script_filename}
 
 if __name__ == "__main__":
     main()
+
 
 
 
