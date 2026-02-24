@@ -471,6 +471,83 @@ Add:
 
 ------------------------------------------------------------
 
+------------------------------------------------------------
+FOLDER ORGANIZATION & NAMED SCREENSHOT RULE
+------------------------------------------------------------
+
+All generated artifacts MUST be saved inside a single execution folder.
+
+1. At runtime, create a folder named:
+
+       test_run_<TIMESTAMP>
+
+   Where TIMESTAMP format is:
+       YYYYMMDD_HHMMSS
+
+   Use:
+       from datetime import datetime
+       import os
+       timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+       output_dir = f"test_run_{{timestamp}}"
+       os.makedirs(output_dir, exist_ok=True)
+
+2. ALL of the following MUST be saved inside this folder:
+
+   - Every screenshot (PASS and FAIL)
+   - The Excel report
+   - A copy of the final executed script itself
+
+3. Screenshot Naming Rule (IMPORTANT):
+
+   DO NOT use step_number alone anymore.
+
+   Instead, create a readable title based on the original statement.
+
+   Screenshot format:
+
+       <STEP_NUMBER>_<SANITIZED_ACTION_TITLE>_PASS.png
+       <STEP_NUMBER>_<SANITIZED_ACTION_TITLE>_FAIL.png
+
+   Where:
+
+   - SANITIZED_ACTION_TITLE is derived from the original line.
+   - Convert to lowercase
+   - Replace spaces with underscores
+   - Remove special characters
+   - Keep it short (max 6 words)
+   - Example transformations:
+
+         page.goto("https://google.com")
+         -> 1_goto_google_PASS.png
+
+         page.get_by_role("button", name="Login").click()
+         -> 2_click_login_button_PASS.png
+
+4. Screenshot path must be:
+
+       page.screenshot(path=os.path.join(output_dir, f"...filename..."))
+
+5. Excel report must be saved as:
+
+       os.path.join(output_dir, "execution_report.xlsx")
+
+6. The currently running script file must also be copied into the folder.
+
+   Use:
+
+       import shutil
+       import sys
+
+       current_script = sys.argv[0]
+       shutil.copy(current_script, os.path.join(output_dir, os.path.basename(current_script)))
+
+7. Do NOT change any existing instrumentation behavior.
+8. Do NOT remove step_number.
+9. Folder creation must happen before execution starts.
+10. All paths must reference output_dir.
+
+------------------------------------------------------------
+
 CRITICAL OUTPUT RULES
 
 - Output ONLY valid Python code.
@@ -1018,6 +1095,7 @@ python {script_filename}
 
 if __name__ == "__main__":
     main()
+
 
 
 
