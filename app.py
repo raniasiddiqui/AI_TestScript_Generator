@@ -244,74 +244,6 @@ class GroqAgent:
         except Exception as e:
             return f"Error: {str(e)}"
 
-# ────────────────────────────────────────────────
-#          ORIGINAL SCRIPT GENERATION PROMPT (unchanged)
-# ────────────────────────────────────────────────
-# TRANSFORM_PROMPT = """
-# You are a strict Playwright instrumentation engine.
-
-# You will receive ONE Playwright function.
-
-# Your job is NOT to rewrite it.
-# Your job is NOT to improve it.
-# Your job is NOT to create a sample.
-# Your job is ONLY to instrument it.
-
-# STRICT RULES:
-
-# 1. Copy the original function definition EXACTLY as provided.
-# 2. Copy EVERY original line EXACTLY as-is.
-# 3. DO NOT change indentation.
-# 4. DO NOT change locators.
-# 5. DO NOT change URLs.
-# 6. DO NOT remove expect statements.
-# 7. DO NOT modify function signature.
-# 8. DO NOT create a new example.
-# 9. DO NOT invent steps.
-
-# You are ONLY allowed to:
-
-# - Add try/except around EACH original executable statement
-# - Add screenshot capture
-# - Add step_logs.append(...)
-# - Add step counter increment
-# - Add a run() wrapper outside the function
-
-# INSTRUMENTATION PATTERN:
-
-# For each original statement:
-
-# try:
-#     ORIGINAL LINE HERE
-#     page.screenshot(path=f"step_{{step_number}}_PASS.png")
-#     step_logs.append(f"Step {{step_number}}: PASS")
-# except Exception as e:
-#     page.screenshot(path=f"step_{{step_number}}_FAIL.png")
-#     step_logs.append(f"Step {{step_number}}: FAIL - {{str(e)}}")
-
-# step_number += 1
-
-# DO NOT merge steps.
-# Each original line = one try block.
-
-# After copying and instrumenting the function:
-
-# Add:
-
-# - step_logs = []
-# - step_number = 1
-# - run() function that:
-#     - launches browser
-#     - creates page
-#     - calls original function
-#     - writes Excel file
-
-# Output ONLY Python code.
-
-# Now instrument this function EXACTLY:
-
-# {input_code}
-# """
 
 TRANSFORM_PROMPT = """
 You are a strict Playwright instrumentation engine.
@@ -471,6 +403,39 @@ Add:
 
 ------------------------------------------------------------
 
+------------------------------------------------------------
+STEP LOG TITLE RULE (FOR EXCEL REPORT)
+------------------------------------------------------------
+
+The Excel report must NOT log steps as:
+
+    Step 1
+    Step 2
+
+Instead, use the SAME SANITIZED_ACTION_TITLE
+used for screenshot naming.
+
+Format:
+
+    step_logs.append(
+        f"Step{step_number}_{SANITIZED_ACTION_TITLE}_PASS"
+    )
+
+On failure:
+
+    step_logs.append(
+        f"Step{step_number}_{SANITIZED_ACTION_TITLE}_FAIL - {str(e)}"
+    )
+
+Rules:
+
+- Use the exact same SANITIZED_ACTION_TITLE
+  generated for screenshot filename.
+- Do NOT remove step_number.
+- Do NOT change execution order.
+- Do NOT change Excel writing logic.
+- Only change the string format inside step_logs.append().
+- Keep PASS/FAIL behavior identical.
 ------------------------------------------------------------
 FOLDER ORGANIZATION & NAMED SCREENSHOT RULE
 ------------------------------------------------------------
@@ -1095,6 +1060,7 @@ python {script_filename}
 
 if __name__ == "__main__":
     main()
+
 
 
 
