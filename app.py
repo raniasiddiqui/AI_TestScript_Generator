@@ -418,13 +418,13 @@ used for screenshot naming.
 Format:
 
     step_logs.append(
-        f"Step{step_number}_{SANITIZED_ACTION_TITLE}_PASS"
+        f"Step{{step_number}}_{{SANITIZED_ACTION_TITLE}}_PASS"
     )
 
 On failure:
 
     step_logs.append(
-        f"Step{step_number}_{SANITIZED_ACTION_TITLE}_FAIL - {str(e)}"
+        f"Step{{step_number}}_{{SANITIZED_ACTION_TITLE}}_FAIL - {{str(e)}}"
     )
 
 Rules:
@@ -1060,6 +1060,7 @@ python {script_filename}
 
 if __name__ == "__main__":
     main()
+
 
 
 
