@@ -874,7 +874,7 @@ def main():
         """,
         unsafe_allow_html=True
     )
-st.markdown(
+    st.markdown(
     """
     <div class="info-banner" style="margin-top: 1.5rem; padding: 1.2rem;">
         <strong>How to get Playwright code using Codegen (from VS Code terminal)</strong><br><br>
@@ -911,7 +911,6 @@ playwright codegen https://your-app.com/login
     """,
     unsafe_allow_html=True
 )
-
     # ---------------- Sidebar ----------------
     with st.sidebar:
         st.markdown("---")
@@ -1097,6 +1096,7 @@ python {script_filename}
 
 if __name__ == "__main__":
     main()
+
 
 
 
