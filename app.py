@@ -914,29 +914,25 @@ def main():
 <div class="info-card">
     <div class="info-title">🛠 How to Generate Playwright Code (VS Code Terminal)</div>
 
-    1️⃣ Install Playwright</div>
+    1️⃣ Install Playwright
     
-        pip install playwright<br>
+        pip install playwright
         playwright install
 
-    <div class="step-title">2️⃣ Verify Installation</div>
-    <div class="code-block">
+    2️⃣ Verify Installation
+   
         playwright --version
-    </div>
 
-    <div class="step-title">3️⃣ Start Codegen Recorder</div>
-    <div class="code-block">
+    3️⃣ Start Codegen Recorder
+    
         playwright codegen
-    </div>
 
-    <div class="step-title">4️⃣ Record on a Specific Website</div>
-    <div class="code-block">
+    4️⃣ Record on a Specific Website
         playwright codegen https://your-app.com/login
-    </div>
-
+ 
     A browser will open → perform actions → code is generated live.
 
-    <div class="step-title">5️⃣ Copy the Generated Function</div>
+    5️⃣ Copy the Generated Function</div>
     Copy the <code>def test_...():</code> function and paste it below.
 </div>
 """, unsafe_allow_html=True)
@@ -1125,6 +1121,7 @@ python {script_filename}
 
 if __name__ == "__main__":
     main()
+
 
 
 
