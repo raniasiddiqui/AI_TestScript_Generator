@@ -874,34 +874,39 @@ def main():
         """,
         unsafe_allow_html=True
     )
-    st.markdown(
+st.markdown(
     """
-    <div class="info-banner" style="margin-top: 1.2rem;">
-    <strong>How to get Playwright code using Codegen (from VS Code terminal)</strong><br><br>
+    <div class="info-banner" style="margin-top: 1.5rem; padding: 1.2rem;">
+        <strong>How to get Playwright code using Codegen (from VS Code terminal)</strong><br><br>
 
-    <strong>1. Install Playwright</strong><br>
-    <pre style="background:#e8f4f8; padding:12px; border-radius:6px; margin:8px 0; white-space: pre-wrap;">
+        <strong>1. Install Playwright</strong><br>
+        <pre style="background:#e8f4f8; padding:12px; border-radius:6px; margin:8px 0; white-space:pre-wrap; font-family:monospace;">
 pip install playwright
-playwright install</pre>
+playwright install
+        </pre>
 
-    <strong>2. Verify installation</strong><br>
-    <pre style="background:#e8f4f8; padding:12px; border-radius:6px; margin:8px 0; white-space: pre-wrap;">
-playwright --version</pre>
+        <strong>2. Verify installation</strong><br>
+        <pre style="background:#e8f4f8; padding:12px; border-radius:6px; margin:8px 0; white-space:pre-wrap; font-family:monospace;">
+playwright --version
+        </pre>
 
-    <strong>3. Start Codegen recorder</strong><br>
-    Just run:<br>
-    <pre style="background:#e8f4f8; padding:12px; border-radius:6px; margin:8px 0; white-space: pre-wrap;">
-playwright codegen</pre>
+        <strong>3. Start Codegen recorder</strong><br>
+        Just run:
+        <pre style="background:#e8f4f8; padding:12px; border-radius:6px; margin:8px 0; white-space:pre-wrap; font-family:monospace;">
+playwright codegen
+        </pre>
 
-    <strong>4. Record your flow on a specific website</strong><br>
-    Example:<br>
-    <pre style="background:#e8f4f8; padding:12px; border-radius:6px; margin:8px 0; white-space: pre-wrap;">
-playwright codegen https://your-app.com/login</pre>
+        <strong>4. Record your flow on a specific website</strong><br>
+        Example:
+        <pre style="background:#e8f4f8; padding:12px; border-radius:6px; margin:8px 0; white-space:pre-wrap; font-family:monospace;">
+playwright codegen https://your-app.com/login
+        </pre>
 
-    → A browser opens → perform actions → code is generated live<br><br>
+        → A browser opens → perform actions → code is generated live<br><br>
 
-    <strong>5. Copy the generated Python function</strong> (the <code>def test_...():</code> part)<br>
-    and paste it into the box below.
+        <strong>5. Copy the generated Python function</strong> 
+        (the <code>def test_...():</code> part)<br>
+        and paste it into the box below.
     </div>
     """,
     unsafe_allow_html=True
@@ -1092,6 +1097,7 @@ python {script_filename}
 
 if __name__ == "__main__":
     main()
+
 
 
 
