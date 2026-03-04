@@ -914,11 +914,10 @@ def main():
 <div class="info-card">
     <div class="info-title">🛠 How to Generate Playwright Code (VS Code Terminal)</div>
 
-    <div class="step-title">1️⃣ Install Playwright</div>
-    <div class="code-block">
+    1️⃣ Install Playwright</div>
+    
         pip install playwright<br>
         playwright install
-    </div>
 
     <div class="step-title">2️⃣ Verify Installation</div>
     <div class="code-block">
@@ -1126,6 +1125,7 @@ python {script_filename}
 
 if __name__ == "__main__":
     main()
+
 
 
 
